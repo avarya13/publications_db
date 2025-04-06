@@ -1,18 +1,27 @@
 from pymongo import MongoClient
 
+# Подключение к MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
-mongo_db = mongo_client["publications_mongo"]
+mongo_db = mongo_client["publications_db"]  # Название базы данных
+metadata_collection = mongo_db["publication_metadata"]  # Коллекция мета-данных
 
+def create_publication_metadata(session, publication_id, doi, link, keywords, abstract, citations, language):
+    """ Функция для добавления мета-данных публикации в MongoDB """
+    metadata = {
+        "publication_id": publication_id,  # Ссылка на публикацию в основной базе
+        "doi": doi,
+        "link": link,
+        "keywords": keywords,
+        "abstract": abstract,
+        "citations": citations
+    }
+    metadata_id = metadata_collection.insert_one(metadata).inserted_id
+    return metadata_id
 
-from pymongo import MongoClient
-
-client = MongoClient("mongodb://localhost:27017/")
-db = client.publications_db
-publications = db.publications
-
-# Поиск публикаций по тегу
-def search_publications_by_tag(tag_name):
-    return publications.find({"tags": tag_name})
+def get_publication_metadata(session, publication_id):
+    """ Получить мета-данные публикации по идентификатору """
+    metadata = metadata_collection.find_one({"publication_id": publication_id})
+    return metadata
 
 
 

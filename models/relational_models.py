@@ -1,6 +1,9 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, Date, Numeric
 from sqlalchemy.orm import relationship, sessionmaker, backref
 from sqlalchemy.ext.declarative import declarative_base
+from .mongo import MongoDB
+# from pymongo import MongoClient
+# import pandas as pd
 
 Base = declarative_base()
 
@@ -34,10 +37,10 @@ class Permissions:
 class Journal(Base):
     __tablename__ = 'journals'
     journal_id = Column(Integer, primary_key=True)
-    publisher = Column(String(255))
+    type = Column(String(50))
     name = Column(String(255))
-    issn = Column(String(50))
-    impact_factor = Column(Numeric(3, 1))
+    issn = Column(String(10))
+    isbn = Column(String(20))
 
 class Author(Base):
     __tablename__ = 'authors'
@@ -45,18 +48,20 @@ class Author(Base):
     first_name = Column(String(100))
     last_name = Column(String(100))
     full_name = Column(String(150))
+    full_name_eng = Column(String(150))
+    email = Column(String(50))
+    orcid = Column(String(20))
 
-    # Изменено: используем уникальный backref
     publications = relationship("Publication", secondary="publication_authors", backref="authors_publications")  
 
 class Institution(Base):
     __tablename__ = 'institutions'
     institution_id = Column(Integer, primary_key=True)
     name = Column(String(255))
-    location = Column(String(255))
-
-    # Изменено: уникальный backref для связи с Publication
-    publications = relationship("Publication", secondary="publication_institutions", backref="institutions_publications")
+    city = Column(String(255))
+    country = Column(String(255))
+    street = Column(String(255))
+    house = Column(Integer)
 
 class Publication(Base):
     __tablename__ = 'publications'
@@ -64,32 +69,22 @@ class Publication(Base):
     title = Column(String(255))
     year = Column(Integer)
     journal_id = Column(Integer, ForeignKey('journals.journal_id'))
-    doi = Column(String(100))
-    volume = Column(Integer)
 
     journal = relationship("Journal")
-    # Изменено: теперь связываемся через уникальное backref
-    institutions = relationship("Institution", secondary="publication_institutions", backref="publications_related")  # Изменено
-    authors = relationship("Author", secondary="publication_authors", backref="publications_related")  # Изменено
+    authors = relationship("Author", secondary="publication_authors", backref="publications_related")  
+    keywords = relationship("Keyword", secondary="publication_keywords", back_populates="publications")
 
-class Review(Base):
-    __tablename__ = 'reviews'
-    review_id = Column(Integer, primary_key=True)
-    publication_id = Column(Integer, ForeignKey('publications.publication_id'))
-    reviewer_id = Column(Integer, ForeignKey('reviewers.reviewer_id'))
-    rating = Column(Integer)
-    comment = Column(Text)
-
-class Reviewer(Base):
-    __tablename__ = 'reviewers'
-    reviewer_id = Column(Integer, primary_key=True)
-    name = Column(String(255))
-    affiliation = Column(String(255))
+    def get_metadata(self):
+        """Получает метаданные из MongoDB по publication_id."""
+        mongo_db = MongoDB()
+        return mongo_db.get_metadata(self.publication_id) 
 
 class Keyword(Base):
     __tablename__ = 'keywords'
     keyword_id = Column(Integer, primary_key=True)
-    keyword = Column(String(255))
+    keyword = Column(String(50), unique=True)
+
+    publications = relationship("Publication", secondary="publication_keywords", back_populates="keywords")  
 
 class PublicationKeyword(Base):
     __tablename__ = 'publication_keywords'
@@ -102,12 +97,12 @@ class PublicationAuthor(Base):
     author_id = Column(Integer, ForeignKey('authors.author_id'), primary_key=True)
 
     publication = relationship("Publication", backref="publication_authors")
-    author = relationship("Author", backref="author_publications")  # Изменено
+    author = relationship("Author", backref="author_publications")  
 
-class PublicationInstitution(Base):
-    __tablename__ = 'publication_institutions'
-    publication_id = Column(Integer, ForeignKey('publications.publication_id'), primary_key=True)
+class AuthorInstitution(Base):
+    __tablename__ = 'author_institution'
+    author_id = Column(Integer, ForeignKey('authors.author_id'), primary_key=True)
     institution_id = Column(Integer, ForeignKey('institutions.institution_id'), primary_key=True)
 
-    publication = relationship("Publication", backref="publication_institutions")
-    institution = relationship("Institution", backref="institution_publications")  # Изменено
+    author = relationship("Author", backref="author_institution")
+    institution = relationship("Institution", backref="institution_authors")
