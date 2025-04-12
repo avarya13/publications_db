@@ -77,38 +77,22 @@ class MainWindow(QWidget):
 
         # Вкладка с авторами
         self.authors_tab = AuthorsTab()
-        self.authors_layout = QVBoxLayout(self.authors_tab)
-        self.authors_list = QListWidget(self)
-        self.authors_layout.addWidget(self.authors_list)
         self.tabs.addTab(self.authors_tab, "Авторы")
 
         # Вкладка с издательствами
         self.publishers_tab = JournalsTab()
-        self.publishers_layout = QVBoxLayout(self.publishers_tab)
-        self.publishers_list = QListWidget(self)
-        self.publishers_layout.addWidget(self.publishers_list)
         self.tabs.addTab(self.publishers_tab, "Издательства")
 
         # Вкладка с организациями
         self.organizations_tab = InstitutionsTab()
-        self.organizations_layout = QVBoxLayout(self.organizations_tab)
-        self.organizations_list = QListWidget(self)
-        self.organizations_layout.addWidget(self.organizations_list)
         self.tabs.addTab(self.organizations_tab, "Организации")
 
         self.setLayout(layout)
         self.publications_data = []  
         self.load_publications()
 
-        # self.tabs.currentChanged.connect(self.on_tab_changed)
-
         self.configure_ui_for_role()
 
-    # def on_tab_changed(self, index):
-    #     if index == 1:  
-    #         self.load_authors()
-    #     elif index == 0: 
-    #         self.load_publications()
 
     def configure_ui_for_role(self):
         try:
@@ -148,16 +132,6 @@ class MainWindow(QWidget):
                 keyword=keyword_filter
             )
 
-            # self.publications_data = publications
-            # num_pub = len(publications)  
-            # self.num_pub_label.setText(f"Количество публикаций: {num_pub}")
-
-            # if not publications:
-            #     self.publications_list.addItem("Не найдено публикаций.")
-            # else:
-            #     for pub in publications:
-            #         self.publications_list.addItem(f"{pub.title} ({pub.year})")
-
             self.publications_data = publications
             num_pub = len(publications)  
             self.num_pub_label.setText(f"Количество публикаций: {num_pub}")
@@ -194,13 +168,5 @@ class MainWindow(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_publications()  
 
-    def on_author_clicked(self, item):
-        pass
-
-    def on_publisher_clicked(self, item):
-        pass
-
-    def on_organization_clicked(self, item):
-        pass
 
     
