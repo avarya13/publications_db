@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton, QMessageBox
 from werkzeug.security import generate_password_hash
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 from models.relational_models import User, Role, Permissions
+from database.relational import SessionLocal
 
 class RegisterDialog(QDialog):
     def __init__(self):
@@ -51,27 +50,33 @@ class RegisterDialog(QDialog):
         # Хеширование пароля
         hashed_password = generate_password_hash(password)
 
-        # Создание подключения к базе данных
-        engine = create_engine('postgresql+psycopg2://postgres:per33sik@localhost/publications_db')
-        Session = sessionmaker(bind=engine)
-        session = Session()
+        # Создание сессии для работы с базой данных
+        session = SessionLocal()
 
-        # Получаем роль из базы данных
-        role = session.query(Role).filter_by(role_name=role_name).first()
-        if not role:
-            QMessageBox.warning(self, "Ошибка", f"Роль {role_name} не найдена!")
-            return
+        try:
+            # Получаем роль из базы данных
+            role = session.query(Role).filter_by(role_name=role_name).first()
+            if not role:
+                QMessageBox.warning(self, "Ошибка", f"Роль {role_name} не найдена!")
+                return
 
-        # Проверка, существует ли уже такой пользователь
-        existing_user = session.query(User).filter_by(username=username).first()
-        if existing_user:
-            QMessageBox.warning(self, "Ошибка", "Пользователь с таким именем уже существует.")
-            return
+            # Проверка, существует ли уже такой пользователь
+            existing_user = session.query(User).filter_by(username=username).first()
+            if existing_user:
+                QMessageBox.warning(self, "Ошибка", "Пользователь с таким именем уже существует.")
+                return
 
-        # Создание нового пользователя
-        new_user = User(username=username, password_hash=hashed_password, role=role)
-        session.add(new_user)
-        session.commit()
+            # Создание нового пользователя
+            new_user = User(username=username, password_hash=hashed_password, role=role)
+            session.add(new_user)
+            session.commit()
 
-        QMessageBox.information(self, "Успех", "Пользователь успешно зарегистрирован!")
-        self.accept()
+            QMessageBox.information(self, "Успех", "Пользователь успешно зарегистрирован!")
+            self.accept()
+
+        except Exception as e:
+            session.rollback()  # В случае ошибки откатываем изменения
+            QMessageBox.warning(self, "Ошибка", f"Произошла ошибка: {e}")
+
+        finally:
+            session.close()  # Закрытие сессии

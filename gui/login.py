@@ -1,14 +1,14 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from werkzeug.security import check_password_hash
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 from models.relational_models import User
 
 class LoginDialog(QDialog):
-    def __init__(self):
+    def __init__(self, session):
         super().__init__()
         self.setWindowTitle("Вход")
         self.setGeometry(200, 200, 300, 200)
+
+        self.session = session  
 
         layout = QVBoxLayout()
 
@@ -36,13 +36,8 @@ class LoginDialog(QDialog):
         username = self.username_input.text()
         password = self.password_input.text()
 
-        # Создание подключения к базе данных
-        engine = create_engine('postgresql+psycopg2://postgres:per33sik@localhost/publications_db')
-        Session = sessionmaker(bind=engine)
-        session = Session()
-
         # Поиск пользователя в базе данных
-        user = session.query(User).filter_by(username=username).first()
+        user = self.session.query(User).filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
             QMessageBox.information(self, "Успех", "Вы успешно вошли в систему!")
             self.accept()
