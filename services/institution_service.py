@@ -253,5 +253,5 @@ class InstitutionsTab(QWidget):
     def sort_institutions(self):
         """Сортирует список организаций по алфавиту в обоих направлениях."""
         if self.institutions_data:
-            self.institutions_data.sort(key=lambda x: x.name.lower(), reverse=False)  # Sort ascending
+            self.institutions_data.sort(key=lambda x: x['name'].lower(), reverse=False)  # Sort ascending
             self.update_institutions_list(self.institutions_data)
