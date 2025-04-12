@@ -11,14 +11,13 @@ class PublicationDetailsDialog(QDialog):
         layout = QVBoxLayout()
 
         # Основная информация
-        layout.addWidget(QLabel(f"Название: {publication.title}"))
-        layout.addWidget(QLabel(f"Год: {publication.year}"))
-        layout.addWidget(QLabel(f"Журнал: {publication.journal}"))
-        layout.addWidget(QLabel(f"Организации: {publication.institution}"))
+        layout.addWidget(QLabel(f"Название: {publication['title']}"))
+        layout.addWidget(QLabel(f"Год: {publication['year']}"))
+        layout.addWidget(QLabel(f"Журнал: {publication['journal']}"))
 
         # Получение авторов
         try:
-            authors = get_authors_by_publication(publication.id)
+            authors = get_authors_by_publication(publication['publication_id'])
             authors_text = ", ".join([author.full_name for author in authors])
         except Exception as e:
             authors_text = "Ошибка загрузки авторов"

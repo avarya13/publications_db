@@ -140,12 +140,23 @@ class MainWindow(QWidget):
 
         try:
             publications = get_all_publications_cached(
+                self.session,
                 title=title_filter,
                 author=author_filter,
                 journal=journal_filter,
                 institution=institution_filter, 
                 keyword=keyword_filter
             )
+
+            # self.publications_data = publications
+            # num_pub = len(publications)  
+            # self.num_pub_label.setText(f"Количество публикаций: {num_pub}")
+
+            # if not publications:
+            #     self.publications_list.addItem("Не найдено публикаций.")
+            # else:
+            #     for pub in publications:
+            #         self.publications_list.addItem(f"{pub.title} ({pub.year})")
 
             self.publications_data = publications
             num_pub = len(publications)  
@@ -155,7 +166,7 @@ class MainWindow(QWidget):
                 self.publications_list.addItem("Не найдено публикаций.")
             else:
                 for pub in publications:
-                    self.publications_list.addItem(f"{pub.title} ({pub.year})")
+                    self.publications_list.addItem(f"{pub['title']} ({pub['year']})")
 
         except Exception as e:
             self.publications_list.addItem("Не удалось загрузить публикации.") 

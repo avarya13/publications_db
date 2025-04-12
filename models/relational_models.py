@@ -78,6 +78,18 @@ class Publication(Base):
         """Получает метаданные из MongoDB по publication_id."""
         mongo_db = MongoDB()
         return mongo_db.get_metadata(self.publication_id) 
+    
+    def to_dict(self):
+        """Преобразует объект Publication в словарь."""
+        return {
+            "publication_id": self.publication_id,
+            "title": self.title,
+            "year": self.year,
+            "journal_id": self.journal_id,
+            "journal": self.journal.name if self.journal else None,  
+            "authors": [author.full_name for author in self.authors],
+            "keywords": [keyword.keyword for keyword in self.keywords]
+        }
 
 class Keyword(Base):
     __tablename__ = 'keywords'
