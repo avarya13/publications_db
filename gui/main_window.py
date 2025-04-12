@@ -1,16 +1,18 @@
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
-from services.publication_service import get_all_publications, get_all_publications_cached  # Ваш сервис для получения публикаций
+from PyQt6.QtWidgets import QApplication, QWidget, QMenu, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
+from PyQt6.QtGui import QAction
+from services.publication_service import get_all_publications, get_all_publications_cached  
 from services.user_service import get_user_role
 from services.author_service import AuthorsTab
 from services.institution_service import InstitutionsTab
 from services.journal_service import JournalsTab
-from models.relational_models import Permissions
+from models.relational_models import Permissions, User
 from database.relational import get_session  
-from .login import LoginDialog  # Импортируем окно входа
+from .login import LoginDialog 
 from .register import RegisterDialog
 from .add_publication import AddPublicationDialog
 from .publication_details import PublicationDetailsDialog
-from .edit_publication import EditPublicationDialog  
+from .edit_publication import EditPublicationDialog 
+from .edit_profile import EditProfileDialog
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -18,18 +20,42 @@ class MainWindow(QWidget):
         self.session = get_session()
         self.setWindowTitle("Система управления публикациями")
         self.setGeometry(100, 100, 800, 600)
-
-        # Основной макет
+        
+        # Main layout
         layout = QVBoxLayout()
 
-        # Создание TabWidget для вкладок
+        header_layout = QHBoxLayout()
+        
+        # Profile and logout menu button 
+        self.profile_menu_button = QPushButton("Профиль", self)
+        self.profile_menu_button.clicked.connect(self.show_profile_menu)
+        header_layout.addStretch() 
+        header_layout.addWidget(self.profile_menu_button)
+        layout.addLayout(header_layout)
+
+        # Create TabWidget for tabs
         self.tabs = QTabWidget(self)
         layout.addWidget(self.tabs)
 
-        # Вкладка поиска публикаций
+        # Add to the layout
+        layout.addWidget(self.profile_menu_button)
+
+        # Create a menu for profile-related actions
+        self.profile_menu = QMenu(self)
+        self.edit_profile_action = QAction("Редактировать профиль", self)
+        self.logout_action = QAction("Сменить аккаунт", self)
+        self.profile_menu.addAction(self.edit_profile_action)
+        self.profile_menu.addAction(self.logout_action)
+
+        # Connect actions to corresponding functions
+        self.edit_profile_action.triggered.connect(self.edit_profile)
+        self.logout_action.triggered.connect(self.logout)
+
+        # Create a Tab for searching publications
         self.search_tab = QWidget()
         self.search_layout = QVBoxLayout(self.search_tab)
 
+        # Add Search Fields and Publication List
         self.search_title = QLineEdit(self)
         self.search_title.setPlaceholderText("Название публикации...")
         self.search_layout.addWidget(self.search_title)
@@ -50,7 +76,7 @@ class MainWindow(QWidget):
         self.search_keyword.setPlaceholderText("Ключевое слово...")
         self.search_layout.addWidget(self.search_keyword)
 
-        # Список публикаций
+        # List of publications
         self.publications_list = QListWidget(self)
         self.search_layout.addWidget(self.publications_list)
         self.publications_list.itemDoubleClicked.connect(self.on_publication_double_clicked)
@@ -59,36 +85,36 @@ class MainWindow(QWidget):
         self.num_pub_label.setText("Количество публикаций: 0")
         self.search_layout.addWidget(self.num_pub_label)
 
-        # Кнопка обновления списка
+        # Button to refresh the list
         self.refresh_button = QPushButton("Обновить список", self)
         self.refresh_button.clicked.connect(self.load_publications)
         self.search_layout.addWidget(self.refresh_button)
 
-        # Кнопка для добавления публикации
+        # Button for adding a publication
         self.add_button = QPushButton("Добавить публикацию", self)
         self.add_button.clicked.connect(self.add_publication)
         self.search_layout.addWidget(self.add_button)
 
-        # Кнопка для редактирования публикации
+        # Button for editing a publication
         self.edit_button = QPushButton("Редактировать публикацию", self)
         self.edit_button.clicked.connect(self.edit_publication)
         self.search_layout.addWidget(self.edit_button)
+
         self.tabs.addTab(self.search_tab, "Поиск публикаций")
 
-        # Вкладка с авторами
+        # Create additional tabs like Authors, Journals, etc.
         self.authors_tab = AuthorsTab()
         self.tabs.addTab(self.authors_tab, "Авторы")
 
-        # Вкладка с издательствами
         self.publishers_tab = JournalsTab()
         self.tabs.addTab(self.publishers_tab, "Издательства")
 
-        # Вкладка с организациями
         self.organizations_tab = InstitutionsTab()
         self.tabs.addTab(self.organizations_tab, "Организации")
 
         self.setLayout(layout)
-        self.publications_data = []  
+
+        self.publications_data = []  # To store publications data
         self.load_publications()
 
         self.configure_ui_for_role()
@@ -107,6 +133,44 @@ class MainWindow(QWidget):
         else: 
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
+
+    def show_profile_menu(self):
+        """Display the profile menu"""
+        self.profile_menu.exec(self.profile_menu_button.mapToGlobal(self.profile_menu_button.rect().bottomLeft()))
+
+    def get_current_user(self):
+        """Возвращает текущего авторизованного пользователя."""
+        try:
+            user_id = get_authenticated_user_id()  # Функция получения текущего пользователя (например, через сессию)
+            return self.session.query(User).filter(User.user_id == user_id).one()  # Настроить под твою модель
+        except Exception as e:
+            print(f"Ошибка получения пользователя: {e}")
+            return None
+
+    def edit_profile(self):
+        """Открывает диалог редактирования профиля пользователя"""
+        user = self.get_current_user()
+        if user:
+            dialog = EditProfileDialog(user=user, session=self.session)  # Передаем данные пользователя в диалог
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.load_user_info()  # Обновляем информацию после редактирования
+        else:
+            QMessageBox.warning(self, "Ошибка", "Не удалось найти данные пользователя.")
+
+    def load_user_info(self):
+        """Загружает информацию о пользователе в интерфейсе"""
+        user = self.get_current_user()
+        if user:
+            # Обновить UI с данными пользователя, например, отобразить имя
+            print(f"Текущий пользователь: {user.full_name}")
+        else:
+            print("Пользователь не найден.")
+
+    def logout(self):
+        """Функция для выхода из текущего аккаунта"""
+        self.close()  # Закрытие текущего окна
+        self.login_window = LoginDialog(self.session)  # Открытие окна для нового входа
+        self.login_window.show()
     
     def add_publication(self):
         dialog = AddPublicationDialog(session=self.session)
