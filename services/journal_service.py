@@ -2,13 +2,37 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit
 from sqlalchemy.orm import sessionmaker
 from database.relational import get_session
 from models.relational_models import Institution, Journal
+from models.redis_client import redis_client
+import json
+import hashlib
+
+# def make_cache_key(**kwargs):
+#     key_base = json.dumps(kwargs, sort_keys=True)
+#     return "publications:" + hashlib.md5(key_base.encode()).hexdigest()
 
 def get_all_journals(session, sort_by="name", descending=False):
-    """Retrieve all journals from the database, sorted by the given column."""
+    key = f"journals:{sort_by}:{'desc' if descending else 'asc'}"
+    cached = redis_client.get(key)
+    if cached:
+        print("Journals were loaded from Redis cache")
+        return json.loads(cached)
+
     order = getattr(Journal, sort_by)
     if descending:
         order = order.desc()
-    return session.query(Journal).order_by(order).all()
+    journals = session.query(Journal).order_by(order).all()
+
+    data = [{"journal_id": j.journal_id, "name": j.name} for j in journals]
+    redis_client.setex(key, 300, json.dumps(data))  # TTL 5 минут
+    return data
+
+
+# def get_all_journals(session, sort_by="name", descending=False):
+#     """Retrieve all journals from the database, sorted by the given column."""
+#     order = getattr(Journal, sort_by)
+#     if descending:
+#         order = order.desc()
+#     return session.query(Journal).order_by(order).all()
 
 class JournalDetailsDialog(QDialog):
     def __init__(self, journal):
@@ -21,7 +45,7 @@ class JournalDetailsDialog(QDialog):
             return QLabel(f"{text}: {value if value else '—'}")
 
         layout.addWidget(safe_label("Тип", journal.type))
-        layout.addWidget(safe_label("Название", journal.name))
+        layout.addWidget(safe_label("Название", journal['name']))
         layout.addWidget(safe_label("ISSN", journal.issn))
         layout.addWidget(safe_label("ISBN", journal.isbn))
 
@@ -91,7 +115,7 @@ class JournalsTab(QWidget):
         self.journals_list.clear()
         if journals:
             for journal in journals:
-                self.journals_list.addItem(journal.name)
+                self.journals_list.addItem(journal['name'])
         else:
             self.journals_list.addItem("Не найдено журналов.")
         self.counter_label.setText(f"Всего журналов: {len(self.journals_list)}")
@@ -102,7 +126,7 @@ class JournalsTab(QWidget):
         if filter_text:
             filtered_journals = [
                 journal for journal in self.journals_data
-                if filter_text in (journal.name or "").lower()
+                if filter_text in (journal['name'] or "").lower()
             ]
             self.update_journals_list(filtered_journals)
         else:
@@ -112,7 +136,7 @@ class JournalsTab(QWidget):
         """Открывает окно с информацией о журнале при двойном клике."""
         selected_name = item.text()
         selected_journal = next(
-            (journal for journal in self.journals_data if journal.name == selected_name),
+            (journal for journal in self.journals_data if journal['name'] == selected_name),
             None
         )
         if selected_journal:
@@ -134,7 +158,7 @@ class JournalsTab(QWidget):
 
         selected_name = selected_item.text()
         selected_journal = next(
-            (journal for journal in self.journals_data if journal.name == selected_name),
+            (journal for journal in self.journals_data if journal['name'] == selected_name),
             None
         )
         if selected_journal:
@@ -206,7 +230,7 @@ class EditJournalDialog(QDialog):
         self.issn_line_edit = QLineEdit(self)
         self.isbn_line_edit = QLineEdit(self)
 
-        self.name_line_edit.setText(journal.name)
+        self.name_line_edit.setText(journal['name'])
         self.type_line_edit.setText(journal.type)
         self.issn_line_edit.setText(journal.issn)
         self.isbn_line_edit.setText(journal.isbn)
@@ -237,7 +261,7 @@ class EditJournalDialog(QDialog):
             return
 
         try:
-            self.journal.name = name
+            self.journal['name'] = name
             self.journal.type = type_
             self.journal.issn = issn
             self.journal.isbn = isbn

@@ -1,5 +1,7 @@
 from database.relational import get_session
 from models.relational_models import Author
+from models.redis_client import redis_client
+import json
 # , Coauthorship
 
 def create_author(first_name, last_name, full_name, orcid):
@@ -8,14 +10,36 @@ def create_author(first_name, last_name, full_name, orcid):
     session.add(author)
     session.commit()
     return author.author_id
+
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QListWidget, QHBoxLayout, QMessageBox, QWidget
 from database.relational import get_session
 from models.relational_models import Author
 from sqlalchemy.orm import sessionmaker
 
-def get_all_authors(session, sort_by="full_name"):
-    """Retrieve all authors from the database, sorted by the given column."""
-    return session.query(Author).order_by(getattr(Author, sort_by)).all()
+# def get_all_authors(session, sort_by="full_name"):
+#     """Retrieve all authors from the database, sorted by the given column."""
+#     return session.query(Author).order_by(getattr(Author, sort_by)).all()
+
+def get_all_authors(session, sort_by="last_name", sort_order="asc"):
+    sort_order = sort_order.lower()
+    if sort_order not in {"asc", "desc"}:
+        raise ValueError("sort_order must be 'asc' or 'desc'")
+
+    key = f"authors:{sort_by}:{sort_order}"
+    cached = redis_client.get(key)
+    if cached:
+        print("Authors were loaded from Redis cache")
+        return json.loads(cached)
+
+    order_column = getattr(Author, sort_by)
+    if sort_order == "desc":
+        order_column = order_column.desc()
+
+    authors = session.query(Author).order_by(order_column).all()
+    data = [{"author_id": a.author_id, "full_name": a.full_name} for a in authors]
+    redis_client.setex(key, 300, json.dumps(data))
+    return data
+
 
 class AuthorDetailsDialog(QDialog):
     def __init__(self, author):
@@ -27,12 +51,12 @@ class AuthorDetailsDialog(QDialog):
         def safe_label(text, value):
             return QLabel(f"{text}: {value if value else '—'}")
 
-        layout.addWidget(safe_label("Имя", author.first_name))
-        layout.addWidget(safe_label("Фамилия", author.last_name))
-        layout.addWidget(safe_label("Полное имя", author.full_name))
-        layout.addWidget(safe_label("Полное имя (англ.)", author.full_name_eng))
-        layout.addWidget(safe_label("Email", author.email))
-        layout.addWidget(safe_label("ORCID", author.orcid))
+        layout.addWidget(safe_label("Имя", author['first_name']))
+        layout.addWidget(safe_label("Фамилия", author['last_name']))
+        layout.addWidget(safe_label("Полное имя", author['full_name']))
+        layout.addWidget(safe_label("Полное имя (англ.)", author['full_name_eng']))
+        layout.addWidget(safe_label("Email", author['email']))
+        layout.addWidget(safe_label("ORCID", author['orcid']))
         # self.counter_label = QLabel(f"Всего авторов: {total_authors_count}", self)
         # layout.addWidget(self.counter_label)
 
@@ -110,9 +134,10 @@ class AuthorsTab(QWidget):
     def update_authors_list(self, authors):
         """Обновляет список авторов."""
         self.authors_list.clear()
+        print(authors)
         if authors:
             for author in authors:
-                self.authors_list.addItem(author.full_name)
+                self.authors_list.addItem(author['full_name'])
         else:
             self.authors_list.addItem("Не найдено авторов.")
         self.update_author_count()
@@ -123,10 +148,10 @@ class AuthorsTab(QWidget):
         if filter_text:
             filtered_authors = [
                 author for author in self.authors_data
-                if filter_text in (author.first_name or "").lower()
-                or filter_text in (author.last_name or "").lower()
-                or filter_text in (author.full_name or "").lower()
-                or filter_text in (author.full_name_eng or "").lower()
+                if filter_text in (author['first_name'] or "").lower()
+                or filter_text in (author['last_name'] or "").lower()
+                or filter_text in (author['full_name'] or "").lower()
+                or filter_text in (author['full_name_eng'] or "").lower()
             ]
             self.update_authors_list(filtered_authors)
         else:
@@ -136,7 +161,7 @@ class AuthorsTab(QWidget):
         """Открывает окно с информацией об авторе при двойном клике."""
         selected_name = item.text()
         selected_author = next(
-            (author for author in self.authors_data if author.full_name == selected_name),
+            (author for author in self.authors_data if author['full_name'] == selected_name),
             None
         )
         if selected_author:
@@ -157,7 +182,7 @@ class AuthorsTab(QWidget):
             return
 
         selected_name = selected_item.text()
-        selected_author = next((author for author in self.authors_data if author.full_name == selected_name), None)
+        selected_author = next((author for author in self.authors_data if author['full_name'] == selected_name), None)
         if selected_author:
             dialog = EditAuthorDialog(self.session, selected_author)
             if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -255,7 +280,7 @@ class EditAuthorDialog(QDialog):
         super().__init__()
         self.session = session
         self.author = author
-        self.setWindowTitle(f"Редактировать автора: {author.full_name}")
+        self.setWindowTitle(f"Редактировать автора: {author['full_name']}")
 
         layout = QVBoxLayout()
 
@@ -267,10 +292,10 @@ class EditAuthorDialog(QDialog):
             layout.addWidget(line_edit)
             return line_edit
 
-        self.full_name_input = add_labeled_input("Полное имя*", author.full_name)
+        self.full_name_input = add_labeled_input("Полное имя*", author['full_name'])
         self.first_name_input = add_labeled_input("Имя автора", author.first_name)
         self.last_name_input = add_labeled_input("Фамилия автора", author.last_name)
-        self.full_name_eng_input = add_labeled_input("Полное имя (англ.)", author.full_name_eng)
+        self.full_name_eng_input = add_labeled_input("Полное имя (англ.)", author['full_name_eng'])
         self.email_input = add_labeled_input("Email автора", author.email)
         self.orcid_input = add_labeled_input("ORCID автора", author.orcid)
 
@@ -283,8 +308,8 @@ class EditAuthorDialog(QDialog):
     def submit_edit(self):
         self.author.first_name = self.first_name_input.text()
         self.author.last_name = self.last_name_input.text()
-        self.author.full_name = self.full_name_input.text()
-        self.author.full_name_eng = self.full_name_eng_input.text()
+        self.author['full_name'] = self.full_name_input.text()
+        self.author['full_name_eng'] = self.full_name_eng_input.text()
         self.author.email = self.email_input.text()
         self.author.orcid = self.orcid_input.text()
 
@@ -294,11 +319,11 @@ class EditAuthorDialog(QDialog):
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить изменения: {e}")
 
-def get_all_authors(session, sort_by="full_name", sort_order="asc"):
-    order = getattr(Author, sort_by)
-    if sort_order == "desc":
-        order = order.desc()  # Descending order
-    return session.query(Author).order_by(order).all()
+# def get_all_authors(session, sort_by="full_name", sort_order="asc"):
+#     order = getattr(Author, sort_by)
+#     if sort_order == "desc":
+#         order = order.desc()  # Descending order
+#     return session.query(Author).order_by(order).all()
 
 
 def get_author_by_id(session, author_id):

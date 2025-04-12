@@ -53,7 +53,7 @@ class MainWindow(QWidget):
         # Список публикаций
         self.publications_list = QListWidget(self)
         self.search_layout.addWidget(self.publications_list)
-        self.publications_list.itemClicked.connect(self.on_publication_clicked)
+        self.publications_list.itemDoubleClicked.connect(self.on_publication_double_clicked)
 
         self.num_pub_label = QLabel(self)
         self.num_pub_label.setText("Количество публикаций: 0")
@@ -172,9 +172,9 @@ class MainWindow(QWidget):
             self.publications_list.addItem("Не удалось загрузить публикации.") 
             print(f"Ошибка загрузки публикаций: {e}")
 
-    def on_publication_clicked(self, item):
-        index = self.publications_list.row(item) 
-        publication = self.publications_data[index] 
+    def on_publication_double_clicked(self, item):
+        index = self.publications_list.row(item)
+        publication = self.publications_data[index]
         dialog = PublicationDetailsDialog(publication)
         dialog.exec()
 

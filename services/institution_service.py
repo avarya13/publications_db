@@ -3,10 +3,24 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from database.relational import get_session
 from models.relational_models import Institution
+from models.redis_client import redis_client
+import json
 
 def get_all_institutions(session, sort_by="name"):
-    """Retrieve all institutions from the database, sorted by the given column."""
-    return session.query(Institution).order_by(getattr(Institution, sort_by)).all()
+    key = f"institutions:{sort_by}"
+    cached = redis_client.get(key)
+    if cached:
+        print("Institutions were loaded from Redis cache")
+        return json.loads(cached)
+
+    institutions = session.query(Institution).order_by(getattr(Institution, sort_by)).all()
+    data = [{"institution_id": i.institution_id, "name": i.name} for i in institutions]
+    redis_client.setex(key, 300, json.dumps(data))
+    return data
+
+# def get_all_institutions(session, sort_by="name"):
+#     """Retrieve all institutions from the database, sorted by the given column."""
+#     return session.query(Institution).order_by(getattr(Institution, sort_by)).all()
 
 class InstitutionDetailsDialog(QDialog):
     def __init__(self, institution):
@@ -18,7 +32,7 @@ class InstitutionDetailsDialog(QDialog):
         def safe_label(text, value):
             return QLabel(f"{text}: {value if value else '—'}")
 
-        layout.addWidget(safe_label("Название", institution.name))
+        layout.addWidget(safe_label("Название", institution['name']))
         layout.addWidget(safe_label("Город", institution.city))
         layout.addWidget(safe_label("Страна", institution.country))
         layout.addWidget(safe_label("Улица", institution.street))
@@ -70,7 +84,7 @@ class AddInstitutionDialog(QDialog):
             )
             self.session.add(new_institution)
             self.session.commit()
-            self.accept()  # Close the dialog
+            self.accept()  
         except SQLAlchemyError as e:
             self.session.rollback()
             QMessageBox.warning(self, "Ошибка", f"Не удалось добавить организацию: {str(e)}")
@@ -90,7 +104,7 @@ class EditInstitutionDialog(QDialog):
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
 
-        self.name_input.setText(institution.name)
+        self.name_input.setText(institution['name'])
         self.city_input.setText(institution.city)
         self.country_input.setText(institution.country)
         self.street_input.setText(institution.street)
@@ -110,19 +124,19 @@ class EditInstitutionDialog(QDialog):
 
     def save_institution(self):
         """Saves the edited institution data to the database."""
-        self.institution.name = self.name_input.text().strip()
+        self.institution['name'] = self.name_input.text().strip()
         self.institution.city = self.city_input.text().strip()
         self.institution.country = self.country_input.text().strip()
         self.institution.street = self.street_input.text().strip()
         self.institution.house = int(self.house_input.text().strip())
 
-        if not self.institution.name or not self.institution.city or not self.institution.country or not self.institution.street or not self.institution.house:
+        if not self.institution['name'] or not self.institution.city or not self.institution.country or not self.institution.street or not self.institution.house:
             QMessageBox.warning(self, "Ошибка", "Все поля должны быть заполнены.")
             return
 
         try:
             self.session.commit()
-            self.accept()  # Close the dialog
+            self.accept()  
         except SQLAlchemyError as e:
             self.session.rollback()
             QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить изменения: {str(e)}")
@@ -183,7 +197,7 @@ class InstitutionsTab(QWidget):
         self.institutions_list.clear()
         if institutions:
             for institution in institutions:
-                self.institutions_list.addItem(institution.name)
+                self.institutions_list.addItem(institution['name'])
         else:
             self.institutions_list.addItem("Не найдено организаций.")
         self.counter_label.setText(f"Всего организаций: {len(self.institutions_list)}")
@@ -194,7 +208,7 @@ class InstitutionsTab(QWidget):
         if filter_text:
             filtered_institutions = [
                 institution for institution in self.institutions_data
-                if filter_text in (institution.name or "").lower()
+                if filter_text in (institution['name'] or "").lower()
             ]
             self.update_institutions_list(filtered_institutions)
         else:
@@ -206,7 +220,7 @@ class InstitutionsTab(QWidget):
         if selected_item:
             selected_name = selected_item.text()
             selected_institution = next(
-                (institution for institution in self.institutions_data if institution.name == selected_name),
+                (institution for institution in self.institutions_data if institution['name'] == selected_name),
                 None
             )
             if selected_institution:
@@ -228,7 +242,7 @@ class InstitutionsTab(QWidget):
 
         selected_name = selected_item.text()
         selected_institution = next(
-            (institution for institution in self.institutions_data if institution.name == selected_name),
+            (institution for institution in self.institutions_data if institution['name'] == selected_name),
             None
         )
         if selected_institution:

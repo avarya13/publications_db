@@ -23,7 +23,7 @@ def get_all_publications_cached(session, **filters):
 
     cached = redis_client.get(cache_key)
     if cached:
-        print("Loaded from Redis cache")
+        print("Publications were loaded from Redis cache")
         return json.loads(cached)  
 
     publications = get_all_publications(session, **filters)
