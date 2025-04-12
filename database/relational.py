@@ -34,3 +34,7 @@ def get_session():
     except Exception as e:
         logger.error(f"Ошибка при создании сессии: {e}")
         raise
+
+def set_authenticated_user(session, user_id):
+    """Устанавливаем текущего авторизованного пользователя в сессии."""
+    session['user_id'] = user_id
