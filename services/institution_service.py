@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from database.relational import get_session
-from models.relational_models import Institution
+from models.relational_models import Institution, UserRole
 from models.redis_client import redis_client
 import json
 
@@ -142,7 +142,7 @@ class EditInstitutionDialog(QDialog):
             QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить изменения: {str(e)}")
 
 class InstitutionsTab(QWidget):
-    def __init__(self):
+    def __init__(self, session_manager):
         super().__init__()
 
         self.session = get_session()
@@ -182,6 +182,30 @@ class InstitutionsTab(QWidget):
         # Загружаем все организации
         self.institutions_data = []
         self.load_institutions()
+        
+        self.session_manager = session_manager    
+        # self.role = self.session_manager.get_user_role()
+        self.configure_ui_for_role()  
+
+    def configure_ui_for_role(self):
+        """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
+        self.role = self.session_manager.get_user_role()
+        if self.role == UserRole.GUEST:
+            # Ограниченные права для гостей
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+        elif self.role == UserRole.AUTHOR:
+            # Права автора
+            self.add_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
+        elif self.role == UserRole.ADMIN:
+            # Права администратора
+            self.add_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
+        else:
+            # По умолчанию
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
 
     def load_institutions(self):
         """Загружает все организации из базы данных."""

@@ -1,13 +1,10 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, Date, Numeric
-from sqlalchemy.orm import relationship, sessionmaker, backref
+from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, Date, Numeric, Enum as SqlEnum
 from sqlalchemy.ext.declarative import declarative_base
 from .mongo import MongoDB
-# from pymongo import MongoClient
-# import pandas as pd
+from enum import Enum as PyEnum
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
-
-# Роль пользователя
 class Role(Base):
     __tablename__ = 'roles'
     
@@ -15,23 +12,25 @@ class Role(Base):
     role_name = Column(String(50), unique=True, nullable=False)
     description = Column(String(255))
 
-    users = relationship("User", back_populates="role")
+    # users = relationship("User", back_populates="role")
 
-from sqlalchemy import Enum
-
-class UserRole(Enum):
-    ADMIN = 'admin'
-    GUEST = 'guest'
-    AUTHOR = 'author'
+# Роль пользователя 
+class UserRole(PyEnum):
+    GUEST = "guest"
+    AUTHOR = "author"
+    ADMIN = "admin"
 
 class User(Base):
     __tablename__ = 'users'
+    
+    user_id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    role = Column(SqlEnum(UserRole), default=UserRole.GUEST)
 
-    user_id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    password = Column(String)
-    role = Column(Enum(UserRole), default=UserRole.GUEST)  # Добавляем поле для роли пользователя
-
+    # Связь с автором (один к одному)
+    author_id = Column(Integer, ForeignKey('authors.author_id'))
+    author = relationship("Author", back_populates="user", uselist=False, foreign_keys=[author_id])
 
 # Пользователь
 # class User(Base):
@@ -45,10 +44,10 @@ class User(Base):
 #     role = relationship("Role", back_populates="users")
 
 # # Пример ролей
-# class Permissions:
-#     FULL_ACCESS = "Full Access"
-#     READ_ONLY = "Read Only"
-#     COMBINED = "Combined Access"
+class Permissions:
+    FULL_ACCESS = "Full Access"
+    READ_ONLY = "Read Only"
+    COMBINED = "Combined Access"
 
 class Journal(Base):
     __tablename__ = 'journals'
@@ -60,6 +59,7 @@ class Journal(Base):
 
 class Author(Base):
     __tablename__ = 'authors'
+    
     author_id = Column(Integer, primary_key=True)
     first_name = Column(String(100))
     last_name = Column(String(100))
@@ -68,7 +68,11 @@ class Author(Base):
     email = Column(String(50))
     orcid = Column(String(20))
 
-    publications = relationship("Publication", secondary="publication_authors", backref="authors_publications")  
+    # Публикации через промежуточную таблицу
+    publications = relationship("Publication", secondary="publication_authors", backref="authors_publications")
+    
+    # Связь с пользователем через внешний ключ
+    user = relationship("User", back_populates="author", uselist=False, foreign_keys=[User.author_id])
 
 class Institution(Base):
     __tablename__ = 'institutions'

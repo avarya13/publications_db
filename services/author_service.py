@@ -1,6 +1,7 @@
 from database.relational import get_session
-from models.relational_models import Author
+from models.relational_models import Author, UserRole
 from models.redis_client import redis_client
+from gui.assign_author import AssignAuthorDialog
 import json
 # , Coauthorship
 
@@ -63,11 +64,17 @@ class AuthorDetailsDialog(QDialog):
         self.setLayout(layout)
 
 class AuthorsTab(QWidget):
-    def __init__(self):
+    def __init__(self, session_manager):
         super().__init__()
 
         self.session = get_session()
         self.layout = QVBoxLayout(self)
+
+        # Только для администраторов
+        # if is_admin:
+        self.assign_button = QPushButton("Назначить пользователя автором", self)
+        self.assign_button.clicked.connect(self.open_assign_dialog)
+        self.layout.addWidget(self.assign_button)
 
         # Строка поиска
         self.search_line_edit = QLineEdit(self)
@@ -108,6 +115,36 @@ class AuthorsTab(QWidget):
         # Загружаем всех авторов
         self.authors_data = []
         self.load_authors(sort_by="last_name", sort_order="asc")
+
+        self.session_manager = session_manager    
+        # self.role = self.session_manager.get_user_role()
+        self.configure_ui_for_role()  
+
+    def configure_ui_for_role(self):
+        """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
+        self.role = self.session_manager.get_user_role()
+        if self.role == UserRole.GUEST:
+            # Ограниченные права для гостей
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+        elif self.role == UserRole.AUTHOR:
+            # Права автора
+            self.add_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
+        elif self.role == UserRole.ADMIN:
+            # Права администратора
+            self.add_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
+        else:
+            # По умолчанию
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+
+    def open_assign_dialog(self):
+        """Открывает диалог для назначения пользователя автором."""
+        dialog = AssignAuthorDialog(self.session)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.load_authors()
 
     def load_authors(self, sort_by="last_name", sort_order="asc"):
         """Загружает всех авторов из базы данных."""

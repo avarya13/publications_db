@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QListWidget, QHBoxLayout, QMessageBox, QWidget, QFormLayout, QDialogButtonBox
 from sqlalchemy.orm import sessionmaker
 from database.relational import get_session
-from models.relational_models import Institution, Journal
+from models.relational_models import UserRole, Journal
 from models.redis_client import redis_client
 import json
 import hashlib
@@ -52,7 +52,7 @@ class JournalDetailsDialog(QDialog):
         self.setLayout(layout)
 
 class JournalsTab(QWidget):
-    def __init__(self):
+    def __init__(self, session_manager):
         super().__init__()
 
         self.session = get_session()
@@ -91,6 +91,31 @@ class JournalsTab(QWidget):
         # Загружаем все журналы
         self.journals_data = []
         self.load_journals()
+        
+        self.session_manager = session_manager    
+        # self.role = self.session_manager.get_user_role()
+        self.configure_ui_for_role()  
+
+    def configure_ui_for_role(self):
+        """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
+        self.role = self.session_manager.get_user_role()
+        print("ROLE", self.role)
+        if self.role == UserRole.GUEST:
+            # Ограниченные права для гостей
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+        elif self.role == UserRole.AUTHOR:
+            # Права автора
+            self.add_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
+        elif self.role == UserRole.ADMIN:
+            # Права администратора
+            self.add_button.setEnabled(True)
+            self.edit_button.setEnabled(True)
+        else:
+            # По умолчанию
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
 
     def toggle_sort_order(self):
         """Toggles sorting order between ascending and descending."""

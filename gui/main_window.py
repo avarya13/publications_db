@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QMenu, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QPoint
 from services.publication_service import get_all_publications, get_all_publications_cached  
 from services.user_service import get_user_role
 from services.author_service import AuthorsTab
@@ -20,6 +21,8 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.is_admin = False
+
         # Инициализация базы данных
         init_db()
 
@@ -27,8 +30,6 @@ class MainWindow(QWidget):
         self.session_manager = SessionManager(self.session) 
         self.setWindowTitle("Система управления публикациями")
         self.setGeometry(100, 100, 800, 600)
-
-        self.login_user()
         
         # Main layout
         layout = QVBoxLayout()
@@ -112,30 +113,30 @@ class MainWindow(QWidget):
         self.tabs.addTab(self.search_tab, "Поиск публикаций")
 
         # Create additional tabs like Authors, Journals, etc.
-        self.authors_tab = AuthorsTab()
+        self.authors_tab = AuthorsTab(self.session_manager)
         self.tabs.addTab(self.authors_tab, "Авторы")
 
-        self.publishers_tab = JournalsTab()
+        self.publishers_tab = JournalsTab(self.session_manager)
         self.tabs.addTab(self.publishers_tab, "Издательства")
 
-        self.organizations_tab = InstitutionsTab()
+        self.organizations_tab = InstitutionsTab(self.session_manager)
         self.tabs.addTab(self.organizations_tab, "Организации")
 
         self.setLayout(layout)
 
+        self.login_user()
+
         self.publications_data = []  # To store publications data
         self.load_publications()
-
-        self.configure_ui_for_role()
 
     def login_user(self):
         """Метод для входа пользователя в систему"""
         login_dialog = LoginDialog(self.session, self.session_manager)
 
         if login_dialog.exec() == QDialog.DialogCode.Accepted:
-            # Пользователь вошел успешно, получаем его роль
-            self.configure_ui_for_role()
+            # Пользователь вошел успешно, получаем его роль            
             self.show()
+            self.configure_ui_for_role()
         else:
             # Вход не удался, спрашиваем пользователя, хочет ли он зарегистрироваться
             choice = QMessageBox.question(self, "Ошибка", "Не удалось войти в систему. Хотите зарегистрироваться?",
@@ -143,12 +144,12 @@ class MainWindow(QWidget):
 
             if choice == QMessageBox.StandardButton.Yes:
                 # Открываем окно регистрации
-                register_dialog = RegisterDialog(self.session)
+                register_dialog = RegisterDialog(self.session, self.session_manager)
 
                 if register_dialog.exec() == QDialog.DialogCode.Accepted:
                     QMessageBox.information(self, "Успех", "Вы успешно зарегистрированы!")
-                    self.show()  # Показываем основное окно
-                    self.configure_ui_for_role()  # Обновляем интерфейс в зависимости от роли
+                    self.show()  
+                    self.configure_ui_for_role() 
                 else:
                     QMessageBox.warning(self, "Ошибка", "Регистрация не удалась.")
             else:
@@ -158,7 +159,12 @@ class MainWindow(QWidget):
     def configure_ui_for_role(self):
         """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
         try:
-            role = get_user_role(self.session)
+            role = self.session_manager.get_user_role()
+            print(f"Текущая роль: {role}")
+
+            user = self.session_manager.get_current_user()
+            print(f"Текущий пользователь: {user.username}")
+
         except Exception as e:
             print(f"Ошибка получения роли пользователя: {e}")
             role = None
@@ -167,30 +173,68 @@ class MainWindow(QWidget):
             # Ограниченные права для гостей
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+            self.configure_other_tabs()  # Настроить элементы в других вкладках
         elif role == UserRole.AUTHOR:
             # Права автора
-            self.add_button.setEnabled(True)
-            self.edit_button.setEnabled(True)
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+            self.configure_other_tabs()  # Настроить элементы в других вкладках
         elif role == UserRole.ADMIN:
             # Права администратора
+            self.is_admin = True
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
+            self.configure_other_tabs()  # Настроить элементы в других вкладках
         else:
             # По умолчанию - только чтение
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+            self.configure_other_tabs()  # Настроить элементы в других вкладках
+
+    def configure_other_tabs(self):
+        """Настроить элементы интерфейса в других вкладках в зависимости от роли"""
+        # if hasattr(self, 'authors_tab'):
+        self.authors_tab.configure_ui_for_role()
+
+        # if hasattr(self, 'publishers_tab'):
+        self.publishers_tab.configure_ui_for_role()
+
+        # if hasattr(self, 'organizations_tab'):
+        self.organizations_tab.configure_ui_for_role()
+        
     def show_profile_menu(self):
-        """Display the profile menu"""
-        self.profile_menu.exec(self.profile_menu_button.mapToGlobal(self.profile_menu_button.rect().bottomLeft()))
+        """Показывает меню профиля или окно входа"""
+        role = self.session_manager.get_user_role()
+        print('show_profile_menu', role)
+        if role == UserRole.GUEST:
+            # Если пользователь гость, то откроем окно входа
+            self.login_user()
+        else:
+            # Меню для авторизованных пользователей
+            self.profile_menu = QMenu(self)
+            self.edit_profile_action = QAction("Редактировать профиль", self)
+            self.logout_action = QAction("Выход", self)
+            self.profile_menu.addAction(self.edit_profile_action)
+            self.profile_menu.addAction(self.logout_action)
 
-    def get_current_user(self):
-        """Метод для получения данных о текущем пользователе из базы данных."""
-        if self.current_user_id is None:
-            return None  # Если пользователь не авторизован, возвращаем None
+            self.edit_profile_action.triggered.connect(self.edit_profile)
+            self.logout_action.triggered.connect(self.logout)
 
-        # Запросим пользователя из базы данных по его ID
-        user = self.session.query(User).filter(User.user_id == self.current_user_id).one_or_none()
-        return user
+            self.profile_menu.exec(self.profile_menu_button.mapToGlobal(QPoint(0, 0)))
+
+
+    # def show_profile_menu(self):
+    #     """Display the profile menu"""
+    #     self.profile_menu.exec(self.profile_menu_button.mapToGlobal(self.profile_menu_button.rect().bottomLeft()))
+
+    # def get_current_user(self):
+    #     """Метод для получения данных о текущем пользователе из базы данных."""
+    #     if self.current_user_id is None:
+    #         return None  # Если пользователь не авторизован, возвращаем None
+
+    #     # Запросим пользователя из базы данных по его ID
+    #     user = self.session.query(User).filter(User.user_id == self.current_user_id).one_or_none()
+    #     return user
     
     # def edit_profile(self):
     #     """Открывает диалог редактирования профиля пользователя"""
@@ -205,6 +249,7 @@ class MainWindow(QWidget):
     def edit_profile(self):
         """Открывает диалог редактирования профиля пользователя"""
         user = self.session_manager.get_current_user()  # Получаем текущего пользователя через менеджер сессии
+        self.configure_ui_for_role()
         if user:
             # Создаем диалог для редактирования профиля и передаем менеджер сессии
             dialog = EditProfileDialog(user=user, session=self.session)  # Передаем менеджер сессии в диалог
@@ -224,6 +269,8 @@ class MainWindow(QWidget):
     def logout(self):
         """Функция для выхода из текущего аккаунта"""
         # self.close()  # Закрытие текущего окна
+        self.session_manager.set_user_role(UserRole.GUEST)
+        self.configure_ui_for_role()
         self.login_window = LoginDialog(self.session, self.session_manager)  # Открытие окна для нового входа
         self.login_window.show()
     
