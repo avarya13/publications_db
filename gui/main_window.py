@@ -1,7 +1,9 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
-from services.publication_service import get_all_publications  # Ваш сервис для получения публикаций
+from services.publication_service import get_all_publications, get_all_publications_cached  # Ваш сервис для получения публикаций
 from services.user_service import get_user_role
 from services.author_service import AuthorsTab
+from services.institution_service import InstitutionsTab
+from services.journal_service import JournalsTab
 from models.relational_models import Permissions
 from database.relational import get_session  
 from .login import LoginDialog  # Импортируем окно входа
@@ -71,7 +73,6 @@ class MainWindow(QWidget):
         self.edit_button = QPushButton("Редактировать публикацию", self)
         self.edit_button.clicked.connect(self.edit_publication)
         self.search_layout.addWidget(self.edit_button)
-
         self.tabs.addTab(self.search_tab, "Поиск публикаций")
 
         # Вкладка с авторами
@@ -82,14 +83,14 @@ class MainWindow(QWidget):
         self.tabs.addTab(self.authors_tab, "Авторы")
 
         # Вкладка с издательствами
-        self.publishers_tab = QWidget()
+        self.publishers_tab = JournalsTab()
         self.publishers_layout = QVBoxLayout(self.publishers_tab)
         self.publishers_list = QListWidget(self)
         self.publishers_layout.addWidget(self.publishers_list)
         self.tabs.addTab(self.publishers_tab, "Издательства")
 
         # Вкладка с организациями
-        self.organizations_tab = QWidget()
+        self.organizations_tab = InstitutionsTab()
         self.organizations_layout = QVBoxLayout(self.organizations_tab)
         self.organizations_list = QListWidget(self)
         self.organizations_layout.addWidget(self.organizations_list)
@@ -138,7 +139,7 @@ class MainWindow(QWidget):
         keyword_filter = self.search_keyword.text()
 
         try:
-            publications = get_all_publications(
+            publications = get_all_publications_cached(
                 title=title_filter,
                 author=author_filter,
                 journal=journal_filter,

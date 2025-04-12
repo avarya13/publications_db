@@ -8,6 +8,28 @@ from models import Journal, Author, Institution, Publication, PublicationAuthor,
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from models.mongo import MongoDB
+import redis
+import json
+import hashlib
+
+r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+_publication_cache = {}
+
+def make_cache_key(**kwargs):
+    key_base = json.dumps(kwargs, sort_keys=True)
+    return "publications:" + hashlib.md5(key_base.encode()).hexdigest()
+
+def get_all_publications_cached(**filters):
+    cache_key = make_cache_key(**filters)
+
+    if cache_key in _publication_cache:
+        print('loaded from cache')
+        return _publication_cache[cache_key]
+
+    publications = get_all_publications(**filters)  
+
+    _publication_cache[cache_key] = publications
+    return publications
 
 def can_user_create_publication(user):
     role = get_user_role(user)
