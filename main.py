@@ -1,47 +1,38 @@
 from gui.main_window import MainWindow
 from gui.login import LoginDialog
 from gui.register import RegisterDialog
-from database.relational import init_db
+from database.relational import init_db, SessionLocal
 from PyQt6.QtWidgets import QApplication, QMessageBox, QDialog
 
 if __name__ == "__main__":
-    # app = QApplication([])
-    # window = MainWindow() #LoginDialog() #
-    # window.show()
-    # app.exec()
+    app = QApplication([])
 
-    app = QApplication([])  # Инициализация приложения
-    init_db()  # Инициализация базы данных
+    # Инициализация базы данных
+    init_db()
 
-    print('opening')
+    # Создаем сессию для работы с БД
+    session = SessionLocal()
 
-    # Показываем окно входа при старте
-    login_dialog = LoginDialog()
+    # Передаем сессию в окно логина
+    login_dialog = LoginDialog(session)
     print('open')
-    
-    if login_dialog.exec() == QDialog.DialogCode.Accepted:
 
-        print('app')
-        window = MainWindow()  # Создание окна после успешного входа
-        window.show()  # Отображение окна
-        app.exec()  # Запуск цикла обработки событий
+    if login_dialog.exec() == QDialog.DialogCode.Accepted:
+        window = MainWindow()
+        window.show()
+        app.exec()
     else:
-        # Если вход не удался, показываем сообщение
         choice = QMessageBox.question(None, "Ошибка", "Не удалось войти в систему. Хотите зарегистрироваться?", 
                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
 
         if choice == QMessageBox.StandardButton.Yes:
-            # Если пользователь нажал "Yes", открываем окно регистрации
             register_dialog = RegisterDialog()
 
             if register_dialog.exec() == QDialog.DialogCode.Accepted:
-                # После успешной регистрации создаем главное окно
                 QMessageBox.information(None, "Успех", "Вы успешно зарегистрированы!")
-                
-                # Переходим к основному окну
                 window = MainWindow()
-                window.show()  # Отображаем окно публикаций
-                app.exec()  # Запускаем основной цикл приложения
+                window.show()
+                app.exec()
             else:
                 QMessageBox.warning(None, "Ошибка", "Регистрация не удалась.")
         else:
