@@ -38,3 +38,9 @@ def get_session():
 def set_authenticated_user(session, user_id):
     """Устанавливаем текущего авторизованного пользователя в сессии."""
     session['user_id'] = user_id
+
+def get_authenticated_user_id(self):
+    """Получаем ID текущего авторизованного пользователя."""
+    return self.current_user_id
+
+

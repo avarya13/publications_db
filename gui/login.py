@@ -1,14 +1,16 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from werkzeug.security import check_password_hash
 from models.relational_models import User
+from services.session_manager import SessionManager
 
 class LoginDialog(QDialog):
-    def __init__(self, session):
+    def __init__(self, session, session_manager):
         super().__init__()
         self.setWindowTitle("Вход")
         self.setGeometry(200, 200, 300, 200)
 
-        self.session = session  
+        self.session = session
+        self.session_manager = session_manager
 
         layout = QVBoxLayout()
 
@@ -33,6 +35,7 @@ class LoginDialog(QDialog):
         self.setLayout(layout)
 
     def login_user(self):
+        """Метод для входа пользователя в систему."""
         username = self.username_input.text()
         password = self.password_input.text()
 
@@ -40,6 +43,9 @@ class LoginDialog(QDialog):
         user = self.session.query(User).filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
             QMessageBox.information(self, "Успех", "Вы успешно вошли в систему!")
+            self.session_manager.set_authenticated_user(user.user_id)  
             self.accept()
         else:
             QMessageBox.warning(self, "Ошибка", "Неверные имя пользователя или пароль.")
+
+

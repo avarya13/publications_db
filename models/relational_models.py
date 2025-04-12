@@ -17,22 +17,38 @@ class Role(Base):
 
     users = relationship("User", back_populates="role")
 
-# Пользователь
+from sqlalchemy import Enum
+
+class UserRole(Enum):
+    ADMIN = 'admin'
+    GUEST = 'guest'
+    AUTHOR = 'author'
+
 class User(Base):
     __tablename__ = 'users'
 
-    user_id = Column(Integer, primary_key=True)
-    username = Column(String(50), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role_id = Column(Integer, ForeignKey('roles.role_id'))
+    user_id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+    role = Column(Enum(UserRole), default=UserRole.GUEST)  # Добавляем поле для роли пользователя
 
-    role = relationship("Role", back_populates="users")
 
-# Пример ролей
-class Permissions:
-    FULL_ACCESS = "Full Access"
-    READ_ONLY = "Read Only"
-    COMBINED = "Combined Access"
+# Пользователь
+# class User(Base):
+#     __tablename__ = 'users'
+
+#     user_id = Column(Integer, primary_key=True)
+#     username = Column(String(50), unique=True, nullable=False)
+#     password_hash = Column(String(255), nullable=False)
+#     role_id = Column(Integer, ForeignKey('roles.role_id'))
+
+#     role = relationship("Role", back_populates="users")
+
+# # Пример ролей
+# class Permissions:
+#     FULL_ACCESS = "Full Access"
+#     READ_ONLY = "Read Only"
+#     COMBINED = "Combined Access"
 
 class Journal(Base):
     __tablename__ = 'journals'
