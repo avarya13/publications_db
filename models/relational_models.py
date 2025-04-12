@@ -20,6 +20,7 @@ class UserRole(PyEnum):
     AUTHOR = "author"
     ADMIN = "admin"
 
+
 class User(Base):
     __tablename__ = 'users'
     
@@ -67,12 +68,12 @@ class Author(Base):
     full_name_eng = Column(String(150))
     email = Column(String(50))
     orcid = Column(String(20))
-
+    user = relationship("User", back_populates="author", uselist=False)  
     # Публикации через промежуточную таблицу
     publications = relationship("Publication", secondary="publication_authors", backref="authors_publications")
     
     # Связь с пользователем через внешний ключ
-    user = relationship("User", back_populates="author", uselist=False, foreign_keys=[User.author_id])
+    # user = relationship("User", back_populates="author", uselist=False, foreign_keys=[User.author_id])
 
 class Institution(Base):
     __tablename__ = 'institutions'

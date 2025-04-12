@@ -176,7 +176,7 @@ class MainWindow(QWidget):
             self.configure_other_tabs()  # Настроить элементы в других вкладках
         elif role == UserRole.AUTHOR:
             # Права автора
-            self.add_button.setEnabled(False)
+            self.add_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.configure_other_tabs()  # Настроить элементы в других вкладках
         elif role == UserRole.ADMIN:

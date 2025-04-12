@@ -25,6 +25,8 @@ def get_all_authors(session, sort_by="last_name", sort_order="asc"):
     sort_order = sort_order.lower()
     if sort_order not in {"asc", "desc"}:
         raise ValueError("sort_order must be 'asc' or 'desc'")
+    
+    # redis_client.delete('authors:last_name:asc')
 
     key = f"authors:{sort_by}:{sort_order}"
     cached = redis_client.get(key)
@@ -37,10 +39,20 @@ def get_all_authors(session, sort_by="last_name", sort_order="asc"):
         order_column = order_column.desc()
 
     authors = session.query(Author).order_by(order_column).all()
-    data = [{"author_id": a.author_id, "full_name": a.full_name} for a in authors]
+
+    # Сохраняем все поля автора
+    data = [{
+        "author_id": a.author_id,
+        "first_name": a.first_name,
+        "last_name": a.last_name,
+        "full_name": a.full_name,
+        "full_name_eng": a.full_name_eng,
+        "email": a.email,
+        "orcid": a.orcid
+    } for a in authors]
+
     redis_client.setex(key, 300, json.dumps(data))
     return data
-
 
 class AuthorDetailsDialog(QDialog):
     def __init__(self, author):
@@ -70,8 +82,7 @@ class AuthorsTab(QWidget):
         self.session = get_session()
         self.layout = QVBoxLayout(self)
 
-        # Только для администраторов
-        # if is_admin:
+        # Если роль пользователя администратор, показываем кнопку для назначения пользователя автором
         self.assign_button = QPushButton("Назначить пользователя автором", self)
         self.assign_button.clicked.connect(self.open_assign_dialog)
         self.layout.addWidget(self.assign_button)
@@ -112,12 +123,13 @@ class AuthorsTab(QWidget):
         self.sort_desc_button.clicked.connect(self.sort_by_last_name_desc)
         self.layout.addWidget(self.sort_desc_button)
 
+        self.authors_list.selectionModel().selectionChanged.connect(self.on_author_selected)
+
         # Загружаем всех авторов
         self.authors_data = []
         self.load_authors(sort_by="last_name", sort_order="asc")
 
         self.session_manager = session_manager    
-        # self.role = self.session_manager.get_user_role()
         self.configure_ui_for_role()  
 
     def configure_ui_for_role(self):
@@ -125,20 +137,54 @@ class AuthorsTab(QWidget):
         self.role = self.session_manager.get_user_role()
         if self.role == UserRole.GUEST:
             # Ограниченные права для гостей
+            self.assign_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
         elif self.role == UserRole.AUTHOR:
             # Права автора
+            self.assign_button.setEnabled(False)
             self.add_button.setEnabled(True)
-            self.edit_button.setEnabled(True)
+            self.edit_button.setEnabled(False)
         elif self.role == UserRole.ADMIN:
             # Права администратора
+            self.assign_button.setEnabled(True)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
         else:
             # По умолчанию
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+
+    def on_author_selected(self, selected, deselected):
+        self.role = self.session_manager.get_user_role()
+
+        if self.role == UserRole.AUTHOR:
+            # Получаем индекс выделенной строки
+            selected_index = selected.indexes()[0] if selected.indexes() else None
+            if selected_index is None:  # Если выделение снято
+                self.edit_button.setEnabled(False)
+            else:
+                # Получаем full_name из первой ячейки строки
+                full_name = selected_index.sibling(selected_index.row(), 0).data()  # Первый столбец с полным именем
+
+                # Ищем автора по полному имени
+                selected_author = self.session.query(Author).filter_by(full_name=full_name).one_or_none()
+
+                if selected_author:
+                    # Получаем текущего пользователя из session_manager
+                    self.current_user = self.session_manager.get_current_user()
+
+                    print(self.current_user)
+                    print('on_author_selected', self.current_user.author_id, selected_author.author_id)
+
+                    # Проверяем, совпадает ли автор из таблицы с текущим пользователем
+                    if selected_author.author_id == self.current_user.author_id:
+                        self.edit_button.setEnabled(True)
+                    else:
+                        self.edit_button.setEnabled(False)
+                else:
+                    # Автор не найден
+                    self.edit_button.setEnabled(False)
 
     def open_assign_dialog(self):
         """Открывает диалог для назначения пользователя автором."""
@@ -182,6 +228,7 @@ class AuthorsTab(QWidget):
     def filter_authors(self):
         """Фильтрует авторов по имени, фамилии, полному имени и полному имени (англ.)."""
         filter_text = self.search_line_edit.text().lower()
+        print(self.authors_data)
         if filter_text:
             filtered_authors = [
                 author for author in self.authors_data
@@ -330,11 +377,11 @@ class EditAuthorDialog(QDialog):
             return line_edit
 
         self.full_name_input = add_labeled_input("Полное имя*", author['full_name'])
-        self.first_name_input = add_labeled_input("Имя автора", author.first_name)
-        self.last_name_input = add_labeled_input("Фамилия автора", author.last_name)
+        self.first_name_input = add_labeled_input("Имя автора", author['first_name'])
+        self.last_name_input = add_labeled_input("Фамилия автора", author['last_name'])
         self.full_name_eng_input = add_labeled_input("Полное имя (англ.)", author['full_name_eng'])
-        self.email_input = add_labeled_input("Email автора", author.email)
-        self.orcid_input = add_labeled_input("ORCID автора", author.orcid)
+        self.email_input = add_labeled_input("Email автора", author['email'])
+        self.orcid_input = add_labeled_input("ORCID автора", author['orcid'])
 
         self.submit_button = QPushButton("Сохранить", self)
         self.submit_button.clicked.connect(self.submit_edit)
@@ -343,12 +390,12 @@ class EditAuthorDialog(QDialog):
         self.setLayout(layout)
 
     def submit_edit(self):
-        self.author.first_name = self.first_name_input.text()
-        self.author.last_name = self.last_name_input.text()
+        self.author['first_name'] = self.first_name_input.text()
+        self.author['last_name'] = self.last_name_input.text()
         self.author['full_name'] = self.full_name_input.text()
         self.author['full_name_eng'] = self.full_name_eng_input.text()
-        self.author.email = self.email_input.text()
-        self.author.orcid = self.orcid_input.text()
+        self.author['email'] = self.email_input.text()
+        self.author['orcid'] = self.orcid_input.text()
 
         try:
             self.session.commit()
