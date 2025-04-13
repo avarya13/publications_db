@@ -1,12 +1,12 @@
-from PyQt6.QtWidgets import QApplication, QWidget, QMenu, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
+from PyQt6.QtWidgets import QApplication, QWidget, QMenu, QListWidgetItem, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import QPoint
+from PyQt6.QtCore import QPoint, Qt
 from services.publication_service import get_all_publications, get_all_publications_cached  
 from services.user_service import get_user_role
 from services.author_service import AuthorsTab
 from services.institution_service import InstitutionsTab
 from services.journal_service import JournalsTab
-from models.relational_models import UserRole, User
+from models.relational_models import UserRole, Publication
 from database.relational import get_session  
 from .login import LoginDialog
 from .register import RegisterDialog
@@ -90,6 +90,7 @@ class MainWindow(QWidget):
         self.publications_list = QListWidget(self)
         self.search_layout.addWidget(self.publications_list)
         self.publications_list.itemDoubleClicked.connect(self.on_publication_double_clicked)
+        self.publications_list.itemClicked.connect(self.on_publication_selected)
 
         self.num_pub_label = QLabel(self)
         self.num_pub_label.setText("Количество публикаций: 0")
@@ -246,6 +247,41 @@ class MainWindow(QWidget):
     #     else:
     #         QMessageBox.warning(self, "Ошибка", "Не удалось найти данные пользователя.")
 
+
+    def on_publication_selected(self, item):
+        """Обработчик для выбора публикации из QListWidget"""
+        if item is None:  # Если ничего не выбрано
+            self.edit_button.setEnabled(False)
+            return
+        
+        print('item', item)
+
+        publication_id = item.data(Qt.ItemDataRole.UserRole)
+        publication = self.session.query(Publication).get(publication_id)
+
+        # Получаем publication_id, который мы добавили как атрибут элемента
+        # publication_id = item.publication_id
+        # publication = self.session.query(Publication).get(publication_id)
+        
+        if publication is None:
+            self.edit_button.setEnabled(False)
+            return
+
+        # Получаем текущего пользователя
+        current_user = self.session_manager.get_current_user()
+
+        # Проверяем, является ли текущий пользователь автором выбранной публикации
+        if current_user.role == UserRole.AUTHOR:
+            # Проверяем, есть ли текущий пользователь в списке авторов
+            is_author = any(author.author_id == current_user.author_id for author in publication.authors)
+            if is_author:
+                self.edit_button.setEnabled(True)  # Разблокируем кнопку
+            else:
+                self.edit_button.setEnabled(False)  # Блокируем кнопку
+        else:
+            self.edit_button.setEnabled(False)  # Блокируем кнопку, если пользователь не автор
+
+
     def edit_profile(self):
         """Открывает диалог редактирования профиля пользователя"""
         user = self.session_manager.get_current_user()  # Получаем текущего пользователя через менеджер сессии
@@ -268,11 +304,12 @@ class MainWindow(QWidget):
 
     def logout(self):
         """Функция для выхода из текущего аккаунта"""
-        # self.close()  # Закрытие текущего окна
-        self.session_manager.set_user_role(UserRole.GUEST)
-        self.configure_ui_for_role()
+        self.close() 
+        # self.session_manager.set_user_role(UserRole.GUEST)
+        # self.configure_ui_for_role()
         self.login_window = LoginDialog(self.session, self.session_manager)  # Открытие окна для нового входа
         self.login_window.show()
+        self.configure_ui_for_role()
     
     def add_publication(self):
         dialog = AddPublicationDialog(session=self.session)
@@ -306,8 +343,9 @@ class MainWindow(QWidget):
                 self.publications_list.addItem("Не найдено публикаций.")
             else:
                 for pub in publications:
-                    self.publications_list.addItem(f"{pub['title']} ({pub['year']})")
-
+                    item = QListWidgetItem(f"{pub['title']} ({pub['year']})")  
+                    item.setData(Qt.ItemDataRole.UserRole, pub['publication_id'])        
+                    self.publications_list.addItem(item)               
         except Exception as e:
             self.publications_list.addItem("Не удалось загрузить публикации.") 
             print(f"Ошибка загрузки публикаций: {e}")
@@ -329,7 +367,7 @@ class MainWindow(QWidget):
         publication = self.publications_data[index]
         print(publication)
 
-        dialog = EditPublicationDialog(session=self.session, publication=publication)  # Передаем объект и сессию
+        dialog = EditPublicationDialog(session=self.session, publication=publication) 
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.load_publications()  
