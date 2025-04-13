@@ -44,10 +44,10 @@ class JournalDetailsDialog(QDialog):
         def safe_label(text, value):
             return QLabel(f"{text}: {value if value else '—'}")
 
-        layout.addWidget(safe_label("Тип", journal.type))
+        layout.addWidget(safe_label("Тип", journal['type']))
         layout.addWidget(safe_label("Название", journal['name']))
-        layout.addWidget(safe_label("ISSN", journal.issn))
-        layout.addWidget(safe_label("ISBN", journal.isbn))
+        layout.addWidget(safe_label("ISSN", journal['issn']))
+        layout.addWidget(safe_label("ISBN", journal['isbn']))
 
         self.setLayout(layout)
 
@@ -84,6 +84,10 @@ class JournalsTab(QWidget):
         self.buttons_layout.addWidget(self.edit_button)
         self.layout.addLayout(self.buttons_layout)
 
+        self.delete_button = QPushButton("Удалить журнал", self)
+        self.delete_button.clicked.connect(self.delete_journal)
+        self.buttons_layout.addWidget(self.delete_button)
+
         # Лейбл для отображения количества журналов
         self.counter_label = QLabel("Всего журналов: 0", self)
         self.layout.addWidget(self.counter_label)
@@ -104,18 +108,22 @@ class JournalsTab(QWidget):
             # Ограниченные права для гостей
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         elif self.role == UserRole.AUTHOR:
             # Права автора
-            self.add_button.setEnabled(True)
-            self.edit_button.setEnabled(True)
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         elif self.role == UserRole.ADMIN:
             # Права администратора
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
+            self.delete_button.setEnabled(True)
         else:
             # По умолчанию
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
 
     def toggle_sort_order(self):
         """Toggles sorting order between ascending and descending."""
@@ -191,6 +199,48 @@ class JournalsTab(QWidget):
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.load_journals()
 
+    def delete_journal(self):
+        selected_item = self.journals_list.currentItem()
+        if not selected_item:
+            QMessageBox.warning(self, "Предупреждение", "Выберите журнал для удаления.")
+            return
+
+        selected_name = selected_item.text()
+        selected_journal = next(
+            (journal for journal in self.journals_data if journal['name'] == selected_name),
+            None
+        )
+
+        if not selected_journal:
+            QMessageBox.warning(self, "Ошибка", "Не удалось найти выбранный журнал.")
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Подтверждение",
+            f"Вы уверены, что хотите удалить журнал \"{selected_name}\"?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if confirm == QMessageBox.StandardButton.Yes:
+            try:
+                journal_obj = self.session.query(Journal).get(selected_journal['journal_id'])
+                if journal_obj:
+                    self.session.delete(journal_obj)
+                    self.session.commit()
+                    self.clear_journals_cache()
+                    self.load_journals()
+                else:
+                    QMessageBox.warning(self, "Ошибка", "Журнал не найден в базе данных.")
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось удалить журнал: {e}")
+
+    def clear_journals_cache(self):
+        for suffix in ["asc", "desc"]:
+            key = f"journals:name:{suffix}"
+            redis_client.delete(key)
+
+
 class AddJournalDialog(QDialog):
     def __init__(self, session):
         super().__init__()
@@ -256,9 +306,9 @@ class EditJournalDialog(QDialog):
         self.isbn_line_edit = QLineEdit(self)
 
         self.name_line_edit.setText(journal['name'])
-        self.type_line_edit.setText(journal.type)
-        self.issn_line_edit.setText(journal.issn)
-        self.isbn_line_edit.setText(journal.isbn)
+        self.type_line_edit.setText(journal['type'])
+        self.issn_line_edit.setText(journal['issn'])
+        self.isbn_line_edit.setText(journal['isbn'])
 
         form_layout.addRow("Название", self.name_line_edit)
         form_layout.addRow("Тип", self.type_line_edit)
@@ -287,9 +337,9 @@ class EditJournalDialog(QDialog):
 
         try:
             self.journal['name'] = name
-            self.journal.type = type_
-            self.journal.issn = issn
-            self.journal.isbn = isbn
+            self.journal['type'] = type_
+            self.journal['issn'] = issn
+            self.journal['isbn'] = isbn
             self.session.commit()
             super().accept()
         except Exception as e:

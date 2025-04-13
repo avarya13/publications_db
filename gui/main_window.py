@@ -111,6 +111,10 @@ class MainWindow(QWidget):
         self.edit_button.clicked.connect(self.edit_publication)
         self.search_layout.addWidget(self.edit_button)
 
+        self.delete_button = QPushButton("Удалить публикацию", self)
+        self.delete_button.clicked.connect(self.delete_publication)
+        self.search_layout.addWidget(self.delete_button)
+
         self.tabs.addTab(self.search_tab, "Поиск публикаций")
 
         # Create additional tabs like Authors, Journals, etc.
@@ -172,22 +176,25 @@ class MainWindow(QWidget):
 
         if role == UserRole.GUEST:
             # Ограниченные права для гостей
+            self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
             self.configure_other_tabs()  # Настроить элементы в других вкладках
         elif role == UserRole.AUTHOR:
             # Права автора
+            self.delete_button.setEnabled(False)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.configure_other_tabs()  # Настроить элементы в других вкладках
         elif role == UserRole.ADMIN:
             # Права администратора
-            self.is_admin = True
+            self.delete_button.setEnabled(True)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
             self.configure_other_tabs()  # Настроить элементы в других вкладках
         else:
             # По умолчанию - только чтение
+            self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
             self.configure_other_tabs()  # Настроить элементы в других вкладках
@@ -281,6 +288,34 @@ class MainWindow(QWidget):
         else:
             self.edit_button.setEnabled(False)  # Блокируем кнопку, если пользователь не автор
 
+    def delete_publication(self):
+        """Удаляет выбранную публикацию (только для администратора)"""
+        selected_item = self.publications_list.currentItem()
+
+        if not selected_item:
+            QMessageBox.warning(self, "Ошибка", "Выберите публикацию для удаления.")
+            return
+
+        publication_id = selected_item.data(Qt.ItemDataRole.UserRole)
+        publication = self.session.query(Publication).get(publication_id)
+
+        if not publication:
+            QMessageBox.warning(self, "Ошибка", "Публикация не найдена.")
+            return
+
+        confirm = QMessageBox.question(self, "Подтвердите удаление",
+                                    f"Вы уверены, что хотите удалить публикацию:\n{publication.title}?",
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+
+        if confirm == QMessageBox.StandardButton.Yes:
+            try:
+                self.session.delete(publication)
+                self.session.commit()
+                QMessageBox.information(self, "Успех", "Публикация удалена.")
+                self.load_publications()
+            except Exception as e:
+                self.session.rollback()
+                QMessageBox.critical(self, "Ошибка", f"Не удалось удалить публикацию.\n{str(e)}")
 
     def edit_profile(self):
         """Открывает диалог редактирования профиля пользователя"""
@@ -370,7 +405,4 @@ class MainWindow(QWidget):
         dialog = EditPublicationDialog(session=self.session, publication=publication) 
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.load_publications()  
-
-
-    
+            self.load_publications()      

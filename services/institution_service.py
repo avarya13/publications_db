@@ -159,6 +159,11 @@ class InstitutionsTab(QWidget):
         self.institutions_list.doubleClicked.connect(self.on_institution_double_clicked)  # Connect double click to view details
         self.layout.addWidget(self.institutions_list)
 
+        # Кнопка для сортировки
+        self.sort_button = QPushButton("Сортировать по имени", self)
+        self.sort_button.clicked.connect(self.sort_institutions)
+        self.layout.addWidget(self.sort_button)
+
         # Кнопки для добавления и редактирования организаций
         self.buttons_layout = QHBoxLayout()
         self.add_button = QPushButton("Добавить организацию", self)
@@ -170,10 +175,9 @@ class InstitutionsTab(QWidget):
         self.buttons_layout.addWidget(self.edit_button)
         self.layout.addLayout(self.buttons_layout)
 
-        # Кнопка для сортировки
-        self.sort_button = QPushButton("Сортировать по имени", self)
-        self.sort_button.clicked.connect(self.sort_institutions)
-        self.layout.addWidget(self.sort_button)
+        self.delete_button = QPushButton("Удалить организацию", self)
+        self.delete_button.clicked.connect(self.delete_institution)
+        self.buttons_layout.addWidget(self.delete_button)
 
         # Лейбл для отображения количества организаций
         self.counter_label = QLabel("Всего организаций: 0", self)
@@ -192,18 +196,22 @@ class InstitutionsTab(QWidget):
         self.role = self.session_manager.get_user_role()
         if self.role == UserRole.GUEST:
             # Ограниченные права для гостей
+            self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
         elif self.role == UserRole.AUTHOR:
             # Права автора
-            self.add_button.setEnabled(True)
-            self.edit_button.setEnabled(True)
+            self.delete_button.setEnabled(False)
+            self.add_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
         elif self.role == UserRole.ADMIN:
             # Права администратора
+            self.delete_button.setEnabled(True)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
         else:
             # По умолчанию
+            self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
 
@@ -279,3 +287,38 @@ class InstitutionsTab(QWidget):
         if self.institutions_data:
             self.institutions_data.sort(key=lambda x: x['name'].lower(), reverse=False)  # Sort ascending
             self.update_institutions_list(self.institutions_data)
+
+    def delete_institution(self):
+        selected_item = self.institutions_list.currentItem()
+        if not selected_item:
+            QMessageBox.warning(self, "Предупреждение", "Выберите организацию для удаления.")
+            return
+
+        selected_name = selected_item.text()
+        selected_institution = next(
+            (institution for institution in self.institutions_data if institution['name'] == selected_name),
+            None
+        )
+        if not selected_institution:
+            QMessageBox.warning(self, "Ошибка", "Не удалось найти организацию в списке.")
+            return
+
+        reply = QMessageBox.question(self, "Подтверждение удаления",
+                                    f"Вы уверены, что хотите удалить организацию '{selected_name}'?",
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                institution_obj = self.session.query(Institution).filter_by(institution_id=selected_institution['institution_id']).first()
+                if institution_obj:
+                    self.session.delete(institution_obj)
+                    self.session.commit()
+                    redis_client.delete("institutions:name") 
+                    print('Очистка кэша после удаления')
+                    QMessageBox.information(self, "Успешно", "Организация удалена.")
+                    self.load_institutions()
+                else:
+                    QMessageBox.warning(self, "Ошибка", "Организация не найдена в базе данных.")
+            except SQLAlchemyError as e:
+                self.session.rollback()
+                QMessageBox.warning(self, "Ошибка", f"Ошибка при удалении: {str(e)}")
