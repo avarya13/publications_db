@@ -22,7 +22,13 @@ def get_all_journals(session, sort_by="name", descending=False):
         order = order.desc()
     journals = session.query(Journal).order_by(order).all()
 
-    data = [{"journal_id": j.journal_id, "name": j.name} for j in journals]
+    data = [{
+        "journal_id": j.journal_id, 
+        "name": j.name,
+        "type": j.type,
+        "issn": j.issn,
+        "isbn": j.isbn
+        } for j in journals]
     redis_client.setex(key, 300, json.dumps(data))  # TTL 5 минут
     return data
 
@@ -61,6 +67,11 @@ class JournalsTab(QWidget):
         self.sort_button = QPushButton("Сортировать по алфавиту (по убыванию)", self)
         self.sort_button.clicked.connect(self.toggle_sort_order)
         self.layout.addWidget(self.sort_button)
+
+        # Кнопка для сортировки
+        # self.sort_button = QPushButton("Сортировать по имени", self)
+        # self.sort_button.clicked.connect(self.sort_journals)
+        # self.layout.addWidget(self.sort_button)
 
         # Строка поиска
         self.search_line_edit = QLineEdit(self)
@@ -197,6 +208,7 @@ class JournalsTab(QWidget):
         if selected_journal:
             dialog = EditJournalDialog(self.session, selected_journal)
             if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.clear_journals_cache()
                 self.load_journals()
 
     def delete_journal(self):
@@ -239,6 +251,12 @@ class JournalsTab(QWidget):
         for suffix in ["asc", "desc"]:
             key = f"journals:name:{suffix}"
             redis_client.delete(key)
+    
+    def sort_journals(self):
+        """Сортирует список журналов по алфавиту в обоих направлениях."""
+        if self.journals_data:
+            self.journals_data.sort(key=lambda x: x['name'].lower(), reverse=False)  # Sort ascending
+            self.update_journals_list(self.journals_data)
 
 
 class AddJournalDialog(QDialog):
@@ -277,7 +295,7 @@ class AddJournalDialog(QDialog):
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
 
-        if not name or not type_ or not issn:
+        if not name: # or not type_ or not issn:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
             return
 
@@ -331,7 +349,7 @@ class EditJournalDialog(QDialog):
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
 
-        if not name or not type_ or not issn:
+        if not name: # or not type_ or not issn:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
             return
 
