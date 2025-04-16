@@ -70,8 +70,8 @@ class Author(Base):
     orcid = Column(String(20))
     user = relationship("User", back_populates="author", uselist=False)  
     # Публикации через промежуточную таблицу
-    publications = relationship("Publication", secondary="publication_authors", backref="authors_publications")
-    
+    publications = relationship("Publication", secondary="publication_authors", back_populates="authors")
+    institutions = relationship("AuthorInstitution", back_populates="author", cascade="all, delete-orphan")
     # Связь с пользователем через внешний ключ
     # user = relationship("User", back_populates="author", uselist=False, foreign_keys=[User.author_id])
 
@@ -83,6 +83,7 @@ class Institution(Base):
     country = Column(String(255))
     street = Column(String(255))
     house = Column(Integer)
+    authors = relationship("AuthorInstitution", back_populates="institution", cascade="all, delete-orphan")
 
 class Publication(Base):
     __tablename__ = 'publications'
@@ -92,7 +93,7 @@ class Publication(Base):
     journal_id = Column(Integer, ForeignKey('journals.journal_id'))
 
     journal = relationship("Journal")
-    authors = relationship("Author", secondary="publication_authors", backref="publications_related")  
+    authors = relationship("Author", secondary="publication_authors", back_populates="publications")  
     keywords = relationship("Keyword", secondary="publication_keywords", back_populates="publications")
 
     def get_metadata(self):
@@ -137,5 +138,5 @@ class AuthorInstitution(Base):
     author_id = Column(Integer, ForeignKey('authors.author_id'), primary_key=True)
     institution_id = Column(Integer, ForeignKey('institutions.institution_id'), primary_key=True)
 
-    author = relationship("Author", backref="author_institution")
-    institution = relationship("Institution", backref="institution_authors")
+    author = relationship("Author", back_populates="institutions")
+    institution = relationship("Institution", back_populates="authors")
