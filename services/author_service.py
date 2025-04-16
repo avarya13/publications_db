@@ -125,6 +125,10 @@ class AuthorsTab(QWidget):
 
         self.authors_list.selectionModel().selectionChanged.connect(self.on_author_selected)
 
+        self.delete_button = QPushButton("Удалить автора", self)
+        self.delete_button.clicked.connect(self.delete_author)
+        self.buttons_layout.addWidget(self.delete_button)
+
         # Загружаем всех авторов
         self.authors_data = []
         self.load_authors(sort_by="last_name", sort_order="asc")
@@ -133,27 +137,27 @@ class AuthorsTab(QWidget):
         self.configure_ui_for_role()  
 
     def configure_ui_for_role(self):
-        """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
         self.role = self.session_manager.get_user_role()
         if self.role == UserRole.GUEST:
-            # Ограниченные права для гостей
             self.assign_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         elif self.role == UserRole.AUTHOR:
-            # Права автора
             self.assign_button.setEnabled(False)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         elif self.role == UserRole.ADMIN:
-            # Права администратора
             self.assign_button.setEnabled(True)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
+            self.delete_button.setEnabled(True)
         else:
-            # По умолчанию
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
+
 
     def on_author_selected(self, selected, deselected):
         self.role = self.session_manager.get_user_role()
@@ -201,6 +205,40 @@ class AuthorsTab(QWidget):
             self.update_author_count()
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось загрузить авторов: {e}")
+
+    def clear_authors_cache(self):
+        print('Очистка кэша после удаления')
+        keys = redis_client.keys("authors:*")
+        for key in keys:
+            redis_client.delete(key)
+
+    def delete_author(self):
+        selected_item = self.authors_list.currentItem()
+        if not selected_item:
+            QMessageBox.warning(self, "Предупреждение", "Выберите автора для удаления.")
+            return
+
+        author_name = selected_item.text()
+        author = self.session.query(Author).filter_by(full_name=author_name).first()
+
+        if not author:
+            QMessageBox.warning(self, "Ошибка", "Автор не найден.")
+            return
+
+        reply = QMessageBox.question(
+            self, "Подтверждение", f"Удалить автора '{author.full_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                self.session.delete(author)
+                self.session.commit()
+                self.clear_authors_cache()
+                self.load_authors()
+                QMessageBox.information(self, "Успех", f"Автор '{author.full_name}' удалён.")
+            except Exception as e:
+                self.session.rollback()
+                QMessageBox.critical(self, "Ошибка", f"Не удалось удалить автора: {e}")
 
     def sort_by_last_name_asc(self):
         """Сортировать авторов по фамилии в прямом порядке."""
@@ -256,6 +294,7 @@ class AuthorsTab(QWidget):
         """Открывает диалог для добавления нового автора."""
         dialog = AddAuthorDialog(self.session)
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.clear_authors_cache()
             self.load_authors()
 
     def edit_author(self):
@@ -270,6 +309,7 @@ class AuthorsTab(QWidget):
         if selected_author:
             dialog = EditAuthorDialog(self.session, selected_author)
             if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.clear_authors_cache()
                 self.load_authors()
 
 
@@ -390,18 +430,25 @@ class EditAuthorDialog(QDialog):
         self.setLayout(layout)
 
     def submit_edit(self):
-        self.author['first_name'] = self.first_name_input.text()
-        self.author['last_name'] = self.last_name_input.text()
-        self.author['full_name'] = self.full_name_input.text()
-        self.author['full_name_eng'] = self.full_name_eng_input.text()
-        self.author['email'] = self.email_input.text()
-        self.author['orcid'] = self.orcid_input.text()
-
         try:
+            author_obj = self.session.get(Author, self.author['author_id'])
+            if not author_obj:
+                QMessageBox.critical(self, "Ошибка", "Автор не найден в базе данных.")
+                return
+
+            author_obj.first_name = self.first_name_input.text()
+            author_obj.last_name = self.last_name_input.text()
+            author_obj.full_name = self.full_name_input.text()
+            author_obj.full_name_eng = self.full_name_eng_input.text()
+            author_obj.email = self.email_input.text()
+            author_obj.orcid = self.orcid_input.text()
+
             self.session.commit()
             self.accept()
+
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить изменения: {e}")
+
 
 # def get_all_authors(session, sort_by="full_name", sort_order="asc"):
 #     order = getattr(Author, sort_by)

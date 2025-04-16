@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QMenu, QListWidgetItem, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import QPoint, Qt
-from services.publication_service import get_all_publications, get_all_publications_cached  
+from services.publication_service import clear_publication_cache, get_all_publications_cached  
 from services.user_service import get_user_role
 from services.author_service import AuthorsTab
 from services.institution_service import InstitutionsTab
@@ -96,6 +96,23 @@ class MainWindow(QWidget):
         self.num_pub_label.setText("Количество публикаций: 0")
         self.search_layout.addWidget(self.num_pub_label)
 
+        sort_buttons_layout = QHBoxLayout()
+
+        self.sort_year_button = QPushButton("Сортировать по году ↑")
+        self.sort_year_button.clicked.connect(self.toggle_sort_by_year)
+        sort_buttons_layout.addWidget(self.sort_year_button)
+
+        self.sort_alpha_button = QPushButton("Сортировать по алфавиту ↑")
+        self.sort_alpha_button.clicked.connect(self.toggle_sort_by_title)
+        sort_buttons_layout.addWidget(self.sort_alpha_button)
+
+        self.search_layout.addLayout(sort_buttons_layout)
+
+        # Состояния сортировки
+        self.sort_by_year_asc = True
+        self.sort_by_title_asc = True
+        self.current_sort = None  # "year" или "title"
+
         # Button to refresh the list
         self.refresh_button = QPushButton("Обновить список", self)
         self.refresh_button.clicked.connect(self.load_publications)
@@ -131,7 +148,7 @@ class MainWindow(QWidget):
 
         self.login_user()
 
-        self.publications_data = []  # To store publications data
+        self.publications_data = []  
         self.load_publications()
 
     def login_user(self):
@@ -179,25 +196,25 @@ class MainWindow(QWidget):
             self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
-            self.configure_other_tabs()  # Настроить элементы в других вкладках
+            self.configure_other_tabs()  
         elif role == UserRole.AUTHOR:
             # Права автора
             self.delete_button.setEnabled(False)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(False)
-            self.configure_other_tabs()  # Настроить элементы в других вкладках
+            self.configure_other_tabs()  
         elif role == UserRole.ADMIN:
             # Права администратора
             self.delete_button.setEnabled(True)
             self.add_button.setEnabled(True)
             self.edit_button.setEnabled(True)
-            self.configure_other_tabs()  # Настроить элементы в других вкладках
+            self.configure_other_tabs()  
         else:
             # По умолчанию - только чтение
             self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
-            self.configure_other_tabs()  # Настроить элементы в других вкладках
+            self.configure_other_tabs()  
 
     def configure_other_tabs(self):
         """Настроить элементы интерфейса в других вкладках в зависимости от роли"""
@@ -282,9 +299,9 @@ class MainWindow(QWidget):
             # Проверяем, есть ли текущий пользователь в списке авторов
             is_author = any(author.author_id == current_user.author_id for author in publication.authors)
             if is_author:
-                self.edit_button.setEnabled(True)  # Разблокируем кнопку
+                self.edit_button.setEnabled(True)  
             else:
-                self.edit_button.setEnabled(False)  # Блокируем кнопку
+                self.edit_button.setEnabled(False)  
         else:
             self.edit_button.setEnabled(False)  # Блокируем кнопку, если пользователь не автор
 
@@ -312,6 +329,7 @@ class MainWindow(QWidget):
                 self.session.delete(publication)
                 self.session.commit()
                 QMessageBox.information(self, "Успех", "Публикация удалена.")
+                clear_publication_cache()
                 self.load_publications()
             except Exception as e:
                 self.session.rollback()
@@ -349,6 +367,7 @@ class MainWindow(QWidget):
     def add_publication(self):
         dialog = AddPublicationDialog(session=self.session)
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            clear_publication_cache()
             self.load_publications()
 
     def load_publications(self):
@@ -371,6 +390,19 @@ class MainWindow(QWidget):
             )
 
             self.publications_data = publications
+
+            # Применим сортировку
+            if self.current_sort == "year":
+                self.publications_data.sort(
+                    key=lambda x: x["year"],
+                    reverse=not self.sort_by_year_asc
+                )
+            elif self.current_sort == "title":
+                self.publications_data.sort(
+                    key=lambda x: x["title"].lower(),
+                    reverse=not self.sort_by_title_asc
+                )
+
             num_pub = len(publications)  
             self.num_pub_label.setText(f"Количество публикаций: {num_pub}")
 
@@ -384,6 +416,22 @@ class MainWindow(QWidget):
         except Exception as e:
             self.publications_list.addItem("Не удалось загрузить публикации.") 
             print(f"Ошибка загрузки публикаций: {e}")
+
+    def toggle_sort_by_year(self):
+        self.sort_by_year_asc = not self.sort_by_year_asc
+        self.current_sort = "year"
+        arrow = "↑" if self.sort_by_year_asc else "↓"
+        self.sort_year_button.setText(f"Сортировать по году {arrow}")
+        self.sort_alpha_button.setText("Сортировать по алфавиту ↑")  # reset
+        self.load_publications()
+
+    def toggle_sort_by_title(self):
+        self.sort_by_title_asc = not self.sort_by_title_asc
+        self.current_sort = "title"
+        arrow = "↑" if self.sort_by_title_asc else "↓"
+        self.sort_alpha_button.setText(f"Сортировать по алфавиту {arrow}")
+        self.sort_year_button.setText("Сортировать по году ↑")  # reset
+        self.load_publications()
 
     def on_publication_double_clicked(self, item):
         index = self.publications_list.row(item)
@@ -405,4 +453,6 @@ class MainWindow(QWidget):
         dialog = EditPublicationDialog(session=self.session, publication=publication) 
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.load_publications()      
+            clear_publication_cache()
+            self.load_publications()    
+

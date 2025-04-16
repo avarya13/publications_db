@@ -191,6 +191,7 @@ class JournalsTab(QWidget):
         """Открывает диалог для добавления нового журнала."""
         dialog = AddJournalDialog(self.session)
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.clear_journals_cache()
             self.load_journals()
 
     def edit_journal(self):
@@ -209,6 +210,7 @@ class JournalsTab(QWidget):
             dialog = EditJournalDialog(self.session, selected_journal)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.clear_journals_cache()
+                print(redis_client.get_cache())
                 self.load_journals()
 
     def delete_journal(self):
@@ -241,6 +243,7 @@ class JournalsTab(QWidget):
                     self.session.delete(journal_obj)
                     self.session.commit()
                     self.clear_journals_cache()
+                    print(redis_client.get_cache())
                     self.load_journals()
                 else:
                     QMessageBox.warning(self, "Ошибка", "Журнал не найден в базе данных.")
@@ -349,17 +352,25 @@ class EditJournalDialog(QDialog):
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
 
-        if not name: # or not type_ or not issn:
+        if not name:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
             return
 
         try:
-            self.journal['name'] = name
-            self.journal['type'] = type_
-            self.journal['issn'] = issn
-            self.journal['isbn'] = isbn
+            journal_obj = self.session.query(Journal).get(self.journal['journal_id'])
+            if not journal_obj:
+                QMessageBox.critical(self, "Ошибка", "Журнал не найден в базе данных.")
+                return
+
+            journal_obj.name = name
+            journal_obj.type = type_
+            journal_obj.issn = issn
+            journal_obj.isbn = isbn
+
             self.session.commit()
             super().accept()
+
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось обновить журнал: {e}")
+
 

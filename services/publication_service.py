@@ -32,6 +32,12 @@ def get_all_publications_cached(session, **filters):
     redis_client.set(cache_key, json.dumps(publications_data), ex=3600)  
     return publications_data
 
+def clear_publication_cache():
+    print('Очистка кэша после удаления')
+    keys = redis_client.keys("publications:*")
+    for key in keys:
+        redis_client.delete(key)  
+
 def can_user_create_publication(user):
     role = get_user_role(user)
     if role == Permissions.FULL_ACCESS:
@@ -91,82 +97,6 @@ def get_all_publications(session, title=None, author=None, journal=None, institu
 
     finally:
         session.close()
-
-
-
-
-# PublicationData = namedtuple("Publication", ["id", "title", "journal", "year", "author", "institution", "keyword"])
-
-# def get_all_publications(title=None, author=None, journal=None, institution=None, keyword=None):
-#     # Подключение к базе данных
-#     conn = psycopg2.connect(
-#         dbname="publications_db", 
-#         user="postgres", 
-#         password="per33sik", 
-#         host="localhost", 
-#         port="5432"
-#     )
-    
-#     cur = conn.cursor()
-    
-#     # Базовый SQL-запрос
-#     query = """
-#         SELECT p.publication_id, 
-#                p.title, 
-#                j.name AS journal_name, 
-#                p.year, 
-#                STRING_AGG(DISTINCT a.full_name, ', ') AS author_names,
-#                STRING_AGG(DISTINCT i.name, ', ') AS institution_names,
-#                STRING_AGG(DISTINCT k.keyword, ', ') AS keywords
-#         FROM publications p
-#         LEFT JOIN publication_authors pa ON p.publication_id = pa.publication_id
-#         LEFT JOIN authors a ON pa.author_id = a.author_id
-#         LEFT JOIN journals j ON p.journal_id = j.journal_id
-#         LEFT JOIN author_institution ai ON a.author_id = ai.author_id
-#         LEFT JOIN institutions i ON ai.institution_id = i.institution_id
-#         LEFT JOIN publication_keywords pk ON p.publication_id = pk.publication_id
-#         LEFT JOIN keywords k ON pk.keyword_id = k.keyword_id
-#         WHERE TRUE
-#     """
-    
-#     filters = []
-
-#     # Фильтры по подстрокам
-#     if title:
-#         query += " AND p.title ILIKE %s"
-#         filters.append(f"%{title}%")
-#     if author:
-#         query += " AND a.full_name ILIKE %s"
-#         filters.append(f"%{author}%")
-#     if journal:
-#         query += " AND j.name ILIKE %s"
-#         filters.append(f"%{journal}%")
-#     if institution:
-#         query += " AND i.name ILIKE %s"
-#         filters.append(f"%{institution}%")
-#     if keyword:
-#         query += " AND k.keyword ILIKE %s"
-#         filters.append(f"%{keyword}%")
-
-#     print(f"SQL Query: {query}")
-#     print(f"Filters: {filters}")
-
-#     query += """
-#         GROUP BY p.publication_id, p.title, j.name, p.year
-#         ORDER BY p.publication_id;
-#     """
-    
-#     # Выполнение запроса с фильтрами
-#     cur.execute(query, tuple(filters))  # Передаем параметры через tuple
-    
-#     # Получаем данные и преобразуем их в список экземпляров Publication
-#     publications = [PublicationData(*row) for row in cur.fetchall()]
-    
-#     # Закрытие соединения
-#     cur.close()
-#     conn.close()
-
-#     return publications
 
 def create_publication(title, year):
     session = get_session()

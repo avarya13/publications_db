@@ -136,19 +136,41 @@ class EditInstitutionDialog(QDialog):
 
     def save_institution(self):
         """Saves the edited institution data to the database."""
-        self.institution['name'] = self.name_input.text().strip()
-        self.institution['city'] = self.city_input.text().strip()
-        self.institution['country'] = self.country_input.text().strip()
-        self.institution['street'] = self.street_input.text().strip()
-        self.institution['house'] = int(self.house_input.text().strip())
 
-        if not self.institution['name'] or not self.institution['city'] or not self.institution['country'] or not self.institution['street'] or not self.institution['house']:
+        name = self.name_input.text().strip()
+        city = self.city_input.text().strip()
+        country = self.country_input.text().strip()
+        street = self.street_input.text().strip()
+        house_text = self.house_input.text().strip()
+
+        if not name or not city or not country or not street or not house_text:
             QMessageBox.warning(self, "Ошибка", "Все поля должны быть заполнены.")
             return
 
         try:
+            house = int(house_text)
+        except ValueError:
+            QMessageBox.warning(self, "Ошибка", "Номер дома должен быть числом.")
+            return
+
+        try:
+            # Найдём ORM-объект по ID
+            institution_obj = self.session.get(Institution, self.institution['institution_id'])
+            if not institution_obj:
+                QMessageBox.critical(self, "Ошибка", "Учреждение не найдено в базе данных.")
+                return
+
+            # Обновим поля ORM-объекта
+            institution_obj.name = name
+            institution_obj.city = city
+            institution_obj.country = country
+            institution_obj.street = street
+            institution_obj.house = house
+
+            # Сохраним изменения
             self.session.commit()
-            self.accept()  
+            self.accept()
+
         except SQLAlchemyError as e:
             self.session.rollback()
             QMessageBox.warning(self, "Ошибка", f"Не удалось сохранить изменения: {str(e)}")
@@ -289,6 +311,7 @@ class InstitutionsTab(QWidget):
         """Открывает диалог для добавления новой организации."""
         dialog = AddInstitutionDialog(self.session)
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.clear_institution_cache()
             self.load_institutions()
 
     def edit_institution(self):
@@ -309,7 +332,7 @@ class InstitutionsTab(QWidget):
                 self.clear_institution_cache() 
                 self.load_institutions()
     
-    def clear_institution_cache():
+    def clear_institution_cache(self):
         print('Очистка кэша после удаления')
         keys = redis_client.keys("institutions:*")
         for key in keys:
