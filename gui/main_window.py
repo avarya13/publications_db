@@ -302,6 +302,8 @@ class MainWindow(QWidget):
                 self.edit_button.setEnabled(True)  
             else:
                 self.edit_button.setEnabled(False)  
+        elif current_user.role == UserRole.ADMIN:
+            self.edit_button.setEnabled(True)  
         else:
             self.edit_button.setEnabled(False)  # Блокируем кнопку, если пользователь не автор
 
@@ -435,6 +437,7 @@ class MainWindow(QWidget):
 
     def on_publication_double_clicked(self, item):
         index = self.publications_list.row(item)
+        self.selected_publication_index = index  # сохраняем для редактирования
         publication = self.publications_data[index]
         dialog = PublicationDetailsDialog(publication)
         dialog.exec()
@@ -442,17 +445,21 @@ class MainWindow(QWidget):
     def edit_publication(self):
         """Открытие диалога редактирования для выбранной публикации"""
         selected_item = self.publications_list.currentItem()
-        if not selected_item:
+
+        if not selected_item and hasattr(self, "selected_publication_index"):
+            index = self.selected_publication_index
+        elif selected_item:
+            index = self.publications_list.row(selected_item)
+            self.selected_publication_index = index
+        else:
             QMessageBox.warning(self, "Предупреждение", "Выберите публикацию для редактирования.")
             return
 
-        index = self.publications_list.row(selected_item)
         publication = self.publications_data[index]
-        print(publication)
-
-        dialog = EditPublicationDialog(session=self.session, publication=publication) 
+        dialog = EditPublicationDialog(session=self.session, publication=publication)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             clear_publication_cache()
-            self.load_publications()    
+            self.load_publications()
+
 
