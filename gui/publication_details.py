@@ -27,7 +27,9 @@ class PublicationDetailsDialog(QDialog):
 
         try:
             mongo_db = MongoDB()
-            meta_data = mongo_db.get_metadata(publication.id)
+            meta_data = mongo_db.get_metadata(publication['publication_id'])
+
+            print("META", meta_data)
             
             def get_display_text(field_name):
                 return meta_data.get(field_name, "-")
