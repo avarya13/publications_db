@@ -1,5 +1,8 @@
-from PyQt6.QtWidgets import QApplication, QWidget, QMenu, QListWidgetItem, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
+from PyQt6.QtWidgets import QToolButton, QGroupBox, QWidget, QMenu, QListWidgetItem, QHBoxLayout, QVBoxLayout, QTabWidget, QPushButton, QListWidget, QLineEdit, QDialog, QMessageBox, QLabel
 from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QToolButton
+from PyQt6.QtCore import Qt
+
 from PyQt6.QtCore import QPoint, Qt
 from services.publication_service import clear_publication_cache, get_all_publications_cached  
 from services.user_service import get_user_role
@@ -23,81 +26,112 @@ class MainWindow(QWidget):
 
         self.is_admin = False
 
-        # Инициализация базы данных
         init_db()
 
         self.session = SessionLocal()
         self.session_manager = SessionManager(self.session) 
+
         self.setWindowTitle("Система управления публикациями")
         self.setGeometry(100, 100, 800, 600)
-        
-        # Main layout
+
+        # --- Main Layout ---
         layout = QVBoxLayout()
 
+        # --- Header Layout ---
         header_layout = QHBoxLayout()
-        
-        # Profile and logout menu button 
-        self.profile_menu_button = QPushButton("Профиль", self)
-        self.profile_menu_button.clicked.connect(self.show_profile_menu)
-        header_layout.addStretch() 
-        header_layout.addWidget(self.profile_menu_button)
-        layout.addLayout(header_layout)
+        header_layout.addStretch()
 
-        # Create TabWidget for tabs
-        self.tabs = QTabWidget(self)
-        layout.addWidget(self.tabs)
-
-        # # Add to the layout
-        # layout.addWidget(self.profile_menu_button)
-
-        # Create a menu for profile-related actions
+        # Profile menu as ToolButton with dropdown
         self.profile_menu = QMenu(self)
         self.edit_profile_action = QAction("Редактировать профиль", self)
         self.logout_action = QAction("Сменить аккаунт", self)
         self.profile_menu.addAction(self.edit_profile_action)
         self.profile_menu.addAction(self.logout_action)
 
-        # Connect actions to corresponding functions
+        self.profile_menu_button = QToolButton(self)
+        self.profile_menu_button.setText("Профиль")
+        self.profile_menu_button.setMenu(self.profile_menu)
+        self.profile_menu_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+
         self.edit_profile_action.triggered.connect(self.edit_profile)
         self.logout_action.triggered.connect(self.logout)
 
-        # Create a Tab for searching publications
+        header_layout.addWidget(self.profile_menu_button)
+        layout.addLayout(header_layout)
+
+        # --- Tab Widget ---
+        self.tabs = QTabWidget(self)
+        layout.addWidget(self.tabs)
+
+        # --- Search Tab ---
         self.search_tab = QWidget()
         self.search_layout = QVBoxLayout(self.search_tab)
+        self.search_layout.setContentsMargins(10, 10, 10, 10)
+        self.search_layout.setSpacing(10)
 
-        # Add Search Fields and Publication List
+        # --- Search Filters Group ---
+        # --- Search Tab ---
+        self.search_tab = QWidget()
+        self.search_layout = QVBoxLayout(self.search_tab)
+        self.search_layout.setContentsMargins(10, 10, 10, 10)
+        self.search_layout.setSpacing(10)
+
+        # --- Search Filters Group ---
+        search_fields_group = QGroupBox("Фильтры поиска")
+        search_fields_layout = QVBoxLayout()
+
+        # Создание и добавление заголовков
+        self.search_title_label = QLabel("Название публикации")
+        self.search_author_label = QLabel("Имя автора")
+        self.search_journal_label = QLabel("Журнал")
+        self.search_institution_label = QLabel("Организация")
+        self.search_keyword_label = QLabel("Ключевое слово")
+
+        # Создание и настройка полей ввода
         self.search_title = QLineEdit(self)
         self.search_title.setPlaceholderText("Название публикации...")
-        self.search_layout.addWidget(self.search_title)
-
         self.search_author = QLineEdit(self)
         self.search_author.setPlaceholderText("Имя автора...")
-        self.search_layout.addWidget(self.search_author)
-
         self.search_journal = QLineEdit(self)
         self.search_journal.setPlaceholderText("Журнал...")
-        self.search_layout.addWidget(self.search_journal)
-
         self.search_institution = QLineEdit(self)
-        self.search_institution.setPlaceholderText("Организации...")
-        self.search_layout.addWidget(self.search_institution)
-
+        self.search_institution.setPlaceholderText("Организация...")
         self.search_keyword = QLineEdit(self)
         self.search_keyword.setPlaceholderText("Ключевое слово...")
-        self.search_layout.addWidget(self.search_keyword)
 
-        # List of publications
+        # Добавление заголовков и полей ввода в layout
+        search_fields_layout.addWidget(self.search_title_label)
+        search_fields_layout.addWidget(self.search_title)
+
+        search_fields_layout.addWidget(self.search_author_label)
+        search_fields_layout.addWidget(self.search_author)
+
+        search_fields_layout.addWidget(self.search_journal_label)
+        search_fields_layout.addWidget(self.search_journal)
+
+        search_fields_layout.addWidget(self.search_institution_label)
+        search_fields_layout.addWidget(self.search_institution)
+
+        search_fields_layout.addWidget(self.search_keyword_label)
+        search_fields_layout.addWidget(self.search_keyword)
+
+        # Установка layout для группы фильтров
+        search_fields_group.setLayout(search_fields_layout)
+        self.search_layout.addWidget(search_fields_group)
+
+        # --- Publication List ---
         self.publications_list = QListWidget(self)
-        self.search_layout.addWidget(self.publications_list)
+        self.publications_list.setAlternatingRowColors(True)
         self.publications_list.itemDoubleClicked.connect(self.on_publication_double_clicked)
         self.publications_list.itemClicked.connect(self.on_publication_selected)
+        self.search_layout.addWidget(self.publications_list)
 
-        self.num_pub_label = QLabel(self)
-        self.num_pub_label.setText("Количество публикаций: 0")
+        self.num_pub_label = QLabel("Количество публикаций: 0", self)
         self.search_layout.addWidget(self.num_pub_label)
 
+        # --- Sorting Buttons ---
         sort_buttons_layout = QHBoxLayout()
-
         self.sort_year_button = QPushButton("Сортировать по году ↑")
         self.sort_year_button.clicked.connect(self.toggle_sort_by_year)
         sort_buttons_layout.addWidget(self.sort_year_button)
@@ -113,28 +147,30 @@ class MainWindow(QWidget):
         self.sort_by_title_asc = True
         self.current_sort = None  # "year" или "title"
 
-        # Button to refresh the list
+        # --- Control Buttons ---
         self.refresh_button = QPushButton("Обновить список", self)
         self.refresh_button.clicked.connect(self.load_publications)
-        self.search_layout.addWidget(self.refresh_button)
 
-        # Button for adding a publication
         self.add_button = QPushButton("Добавить публикацию", self)
-        self.add_button.clicked.connect(self.add_publication)
-        self.search_layout.addWidget(self.add_button)
+        # self.add_button.setIcon(QIcon("icons/add.png"))  # если есть иконки
 
-        # Button for editing a publication
         self.edit_button = QPushButton("Редактировать публикацию", self)
-        self.edit_button.clicked.connect(self.edit_publication)
-        self.search_layout.addWidget(self.edit_button)
+        # self.edit_button.setIcon(QIcon("icons/edit.png"))
 
         self.delete_button = QPushButton("Удалить публикацию", self)
+        # self.delete_button.setIcon(QIcon("icons/delete.png"))
+
+        self.add_button.clicked.connect(self.add_publication)
+        self.edit_button.clicked.connect(self.edit_publication)
         self.delete_button.clicked.connect(self.delete_publication)
-        self.search_layout.addWidget(self.delete_button)
+
+        for button in [self.refresh_button, self.add_button, self.edit_button, self.delete_button]:
+            button.setFixedHeight(35)
+            self.search_layout.addWidget(button)
 
         self.tabs.addTab(self.search_tab, "Поиск публикаций")
 
-        # Create additional tabs like Authors, Journals, etc.
+        # --- Other Tabs ---
         self.authors_tab = AuthorsTab(self.session_manager)
         self.tabs.addTab(self.authors_tab, "Авторы")
 
@@ -146,10 +182,93 @@ class MainWindow(QWidget):
 
         self.setLayout(layout)
 
+        # --- Login and Load ---
         self.login_user()
-
         self.publications_data = []  
         self.load_publications()
+
+        # --- Optional Styling ---
+        self.setStyleSheet("""
+            QWidget {
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+                background-color: #f9f7f3;
+            }
+                           
+            QLabel {  background-color: #f3f1ec;}
+
+            QPushButton {
+                padding: 8px 16px;
+                background-color: #e5e2d7;
+                color: #4a4a4a;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover:enabled {
+                background-color: #d8d5c9;
+                color: #333;  /* Изменить цвет текста на тёмный */
+            }
+
+            QPushButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #d6d3c7;
+                border-radius: 6px;
+                margin-top: 10px;
+                background-color: #f3f1ec;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 6px;
+                font-size: 15px;
+                color: #5a5a5a;
+            }
+
+            QListWidget {
+                font-size: 13px;
+                background-color: #fdfcf9;
+                border: 1px solid #cfcabe;
+                border-radius: 5px;
+            }
+            QListWidget::item {
+                padding: 10px;
+                color: #4a4a4a;  /* Text color */
+            }
+            QListWidget::item:selected {
+                background-color: #cfdcd2;
+                color: #333;  /* Darker text color when selected */
+            }
+            QListWidget::item:hover {
+                background-color: #e0e0e0;  /* Lighter background color on hover */
+                color: #333;  /* Darker text color on hover */
+            }
+
+            QToolButton {
+                background-color: #e5e2d7;
+                border: 1px solid #b8b4a8;
+                padding: 6px 12px;
+                border-radius: 5px;
+                color: #4a4a4a;
+            }
+            QToolButton::menu-indicator {
+                image: none;
+            }
+            QToolButton:hover:enabled {
+                background-color: #d8d5c9;
+            }
+            QToolButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+        """)
 
     def login_user(self):
         """Метод для входа пользователя в систему"""

@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (QTextEdit,
+from PyQt6.QtWidgets import (QTextEdit, QWidget,
     QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QListWidgetItem, QInputDialog,
     QListWidget, QAbstractItemView, QHBoxLayout, QMessageBox, QScrollArea
 )
@@ -15,131 +15,227 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-
 class EditPublicationDialog(QDialog):
-    def __init__(self, session, publication):
+    def __init__(self, session=None, publication=None):
         super().__init__()
         self.session = session
-        self.publication = publication
-        self.publication_id = publication['publication_id']
-        self.setWindowTitle("Редактировать публикацию")
-        self.setGeometry(200, 200, 400, 800)
+        self.publication = publication or {}
+        self.publication_id = self.publication.get('publication_id', None)
 
-        layout = QVBoxLayout()
+        self.setWindowTitle("Редактировать публикацию")
+        self.setGeometry(100, 100, 800, 900)
+
+        # 👉 Применяем стиль
+        self.setStyleSheet("""
+            QWidget {
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+                background-color: #f9f7f3;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+
+            QLineEdit:focus {
+                border-color: #6e6e6e;
+            }
+
+            QLabel {
+                font-weight: bold;
+                color: #4a4a4a;
+            }
+
+            QComboBox {
+                padding: 6px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+
+            QComboBox:focus {
+                border-color: #6e6e6e;
+            }
+
+            QPushButton {
+                padding: 8px 16px;
+                background-color: #e5e2d7;
+                color: #4a4a4a;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover:enabled {
+                background-color: #d8d5c9;
+                color: #333;
+            }
+
+            QPushButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+
+            QListWidget {
+                font-size: 13px;
+                background-color: #fdfcf9;
+                border: 1px solid #cfcabe;
+                border-radius: 5px;
+            }
+
+            QListWidget::item {
+                padding: 10px;
+                color: #4a4a4a;
+            }
+
+            QListWidget::item:selected {
+                background-color: #cfdcd2;
+                color: #333;
+            }
+
+            QListWidget::item:hover {
+                background-color: #e0e0e0;
+                color: #333;
+            }
+
+            QTextEdit {
+                padding: 6px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+
+            QTextEdit:focus {
+                border-color: #6e6e6e;
+            }
+        """)
+
+        # 👉 Контент формы
+        form_widget = QWidget()
+        form_layout = QVBoxLayout(form_widget)
 
         # Название
+        form_layout.addWidget(QLabel("Название:"))
         self.title_input = QLineEdit()
-        layout.addWidget(QLabel("Название:"))
-        layout.addWidget(self.title_input)
+        form_layout.addWidget(self.title_input)
 
         # Год
+        form_layout.addWidget(QLabel("Год:"))
         self.year_input = QLineEdit()
-        layout.addWidget(QLabel("Год:"))
-        layout.addWidget(self.year_input)
+        form_layout.addWidget(self.year_input)
 
         # Журнал
+        form_layout.addWidget(QLabel("Журнал:"))
         self.journal_combo = QComboBox()
-        self.load_journals()
-        layout.addWidget(QLabel("Журнал:"))
-        layout.addWidget(self.journal_combo)
+        form_layout.addWidget(self.journal_combo)
 
-        # Авторы
-        # self.authors_list = QListWidget()
-        # self.authors_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        # self.load_authors()
-        # layout.addWidget(QLabel("Авторы:"))
-        # layout.addWidget(self.authors_list)
-        layout.addWidget(QLabel("Текущие авторы публикации:"))
+        # Текущие авторы
+        form_layout.addWidget(QLabel("Текущие авторы публикации:"))
         self.authors_list = QListWidget()
         self.authors_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        layout.addWidget(self.authors_list)
+        self.authors_list.setMinimumHeight(150)
+        form_layout.addWidget(self.authors_list)
 
-        layout.addWidget(QLabel("Добавить из списка доступных авторов:"))
+        # Доступные авторы
+        form_layout.addWidget(QLabel("Добавить из списка доступных авторов:"))
         self.available_authors_list = QListWidget()
         self.available_authors_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        layout.addWidget(self.available_authors_list)
+        self.available_authors_list.setMinimumHeight(200)
+        form_layout.addWidget(self.available_authors_list)
 
+        # Кнопки добавления/удаления авторов
         authors_buttons_layout = QHBoxLayout()
         self.btn_add_to_publication = QPushButton("Добавить")
         self.btn_remove_from_publication = QPushButton("Удалить")
         authors_buttons_layout.addWidget(self.btn_add_to_publication)
         authors_buttons_layout.addWidget(self.btn_remove_from_publication)
-        layout.addLayout(authors_buttons_layout)
-
-        self.btn_add_to_publication.clicked.connect(self.add_author_to_publication)
-        self.btn_remove_from_publication.clicked.connect(self.remove_author_from_publication)
+        form_layout.addLayout(authors_buttons_layout)
 
         # Аннотация
+        form_layout.addWidget(QLabel("Аннотация:"))
         self.abstract_input = QTextEdit()
-        layout.addWidget(QLabel("Аннотация:"))
-        layout.addWidget(self.abstract_input)
+        self.abstract_input.setMinimumHeight(200)
+        form_layout.addWidget(self.abstract_input)
 
         # Ключевые слова
+        form_layout.addWidget(QLabel("Ключевые слова:"))
         self.keyword_input = QTextEdit()
-        layout.addWidget(QLabel("Ключевые слова:"))
-        layout.addWidget(self.keyword_input)
+        self.keyword_input.setMinimumHeight(100)
+        form_layout.addWidget(self.keyword_input)
 
         # Проекты
+        form_layout.addWidget(QLabel("Проекты:"))
         self.projects_input = QLineEdit()
-        layout.addWidget(QLabel("Проекты:"))
-        layout.addWidget(self.projects_input)
+        form_layout.addWidget(self.projects_input)
 
         # Статус публикации
+        form_layout.addWidget(QLabel("Статус публикации:"))
         self.status_input = QLineEdit()
-        layout.addWidget(QLabel("Статус публикации:"))
-        layout.addWidget(self.status_input)
+        form_layout.addWidget(self.status_input)
 
         # Тип публикации
+        form_layout.addWidget(QLabel("Тип публикации:"))
         self.type_input = QLineEdit()
-        layout.addWidget(QLabel("Тип публикации:"))
-        layout.addWidget(self.type_input)
+        form_layout.addWidget(self.type_input)
 
         # DOI
+        form_layout.addWidget(QLabel("DOI:"))
         self.doi_input = QLineEdit()
-        layout.addWidget(QLabel("DOI:"))
-        layout.addWidget(self.doi_input)
+        form_layout.addWidget(self.doi_input)
 
         # Электронная библиография
+        form_layout.addWidget(QLabel("Электронная библиография:"))
         self.bibliography_input = QTextEdit()
-        layout.addWidget(QLabel("Электронная библиография:"))
-        layout.addWidget(self.bibliography_input)
+        self.bibliography_input.setMinimumHeight(100)
+        form_layout.addWidget(self.bibliography_input)
 
         # Цитирования
+        form_layout.addWidget(QLabel("Цитирования WoS:"))
         self.citations_wos_input = QLineEdit()
-        layout.addWidget(QLabel("Цитирования WoS:"))
-        layout.addWidget(self.citations_wos_input)
+        form_layout.addWidget(self.citations_wos_input)
 
+        form_layout.addWidget(QLabel("Цитирования RSCI:"))
         self.citations_rsci_input = QLineEdit()
-        layout.addWidget(QLabel("Цитирования RSCI:"))
-        layout.addWidget(self.citations_rsci_input)
+        form_layout.addWidget(self.citations_rsci_input)
 
+        form_layout.addWidget(QLabel("Цитирования Scopus:"))
         self.citations_scopus_input = QLineEdit()
-        layout.addWidget(QLabel("Цитирования Scopus:"))
-        layout.addWidget(self.citations_scopus_input)
+        form_layout.addWidget(self.citations_scopus_input)
 
+        form_layout.addWidget(QLabel("Цитирования RINZ:"))
         self.citations_rinz_input = QLineEdit()
-        layout.addWidget(QLabel("Цитирования RINZ:"))
-        layout.addWidget(self.citations_rinz_input)
+        form_layout.addWidget(self.citations_rinz_input)
 
+        form_layout.addWidget(QLabel("Цитирования ВАК:"))
         self.citations_vak_input = QLineEdit()
-        layout.addWidget(QLabel("Цитирования ВАК:"))
-        layout.addWidget(self.citations_vak_input)
+        form_layout.addWidget(self.citations_vak_input)
 
-        # Дата подачи патента
+        # Патент
+        form_layout.addWidget(QLabel("Дата подачи патента:"))
         self.patent_date_input = QLineEdit()
-        layout.addWidget(QLabel("Дата подачи патента:"))
-        layout.addWidget(self.patent_date_input)
+        form_layout.addWidget(self.patent_date_input)
 
-        # Сохранение
+        # Кнопка сохранения
         self.save_button = QPushButton("Сохранить изменения")
-        self.save_button.clicked.connect(self.save_changes)
-        layout.addWidget(self.save_button)
+        form_layout.addWidget(self.save_button)
 
-        self.setLayout(layout)
+        # 👉 ScrollArea
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(form_widget)
 
+        # 👉 Основной layout диалога
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(scroll)
+
+        # Загрузка данных публикации
         if self.publication_id:
             self.load_publication_data()
             self.load_available_authors()
+
 
     # def load_journals(self):
     #     # Пример запроса всех журналов из БД

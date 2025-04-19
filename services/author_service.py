@@ -57,7 +57,31 @@ def get_all_authors(session, sort_by="last_name", sort_order="asc"):
 class AuthorDetailsDialog(QDialog):
     def __init__(self, author):
         super().__init__()
+        self.setGeometry(100, 100, 800, 900)
         self.setWindowTitle("Информация об авторе")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
 
         layout = QVBoxLayout()
 
@@ -81,6 +105,52 @@ class AuthorsTab(QWidget):
 
         self.session = get_session()
         self.layout = QVBoxLayout(self)
+
+        self.setStyleSheet("""
+            QWidget {
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+                background-color: #fdfcf9;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QPushButton {
+                padding: 8px 14px;
+                background-color: #e5e2d7;
+                color: #3c3c3c;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover:enabled {
+                background-color: #d8d5c9;
+                color: #2b2b2b;
+            }
+
+            QPushButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+
+            QListWidget {
+                border: 1px solid #cfcfcf;
+                border-radius: 6px;
+                background-color: #ffffff;
+                padding: 4px;
+                font-size: 13px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #4a4a4a;
+            }
+        """)
 
         # Если роль пользователя администратор, показываем кнопку для назначения пользователя автором
         self.assign_button = QPushButton("Назначить пользователя автором", self)
@@ -317,7 +387,31 @@ class AddAuthorDialog(QDialog):
     def __init__(self, session):
         super().__init__()
         self.session = session
+        self.setGeometry(100, 100, 800, 900)
         self.setWindowTitle("Добавить нового автора")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
         
         layout = QVBoxLayout()
 
@@ -402,9 +496,33 @@ class AddAuthorDialog(QDialog):
 class EditAuthorDialog(QDialog):
     def __init__(self, session, author):
         super().__init__()
+        self.setGeometry(100, 100, 800, 900)
         self.session = session
         self.author = author
         self.setWindowTitle(f"Редактировать автора: {author['full_name']}")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
 
         layout = QVBoxLayout()
 

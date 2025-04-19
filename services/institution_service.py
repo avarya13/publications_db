@@ -38,6 +38,31 @@ class InstitutionDetailsDialog(QDialog):
     def __init__(self, institution):
         super().__init__()
         self.setWindowTitle("Информация об организации")
+        self.setGeometry(100, 100, 800, 900)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
 
         layout = QVBoxLayout()
 
@@ -57,6 +82,31 @@ class AddInstitutionDialog(QDialog):
         super().__init__()
         self.session = session
         self.setWindowTitle("Добавить организацию")
+        self.setGeometry(100, 100, 800, 900)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
 
         layout = QFormLayout()
 
@@ -107,6 +157,31 @@ class EditInstitutionDialog(QDialog):
         self.session = session
         self.institution = institution
         self.setWindowTitle("Редактировать организацию")
+        self.setGeometry(100, 100, 800, 900)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
 
         layout = QFormLayout()
 
@@ -181,6 +256,52 @@ class InstitutionsTab(QWidget):
 
         self.session = get_session()
         self.layout = QVBoxLayout(self)
+
+        self.setStyleSheet("""
+            QWidget {
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+                background-color: #fdfcf9;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QPushButton {
+                padding: 8px 14px;
+                background-color: #e5e2d7;
+                color: #3c3c3c;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover:enabled {
+                background-color: #d8d5c9;
+                color: #2b2b2b;
+            }
+
+            QPushButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+
+            QListWidget {
+                border: 1px solid #cfcfcf;
+                border-radius: 6px;
+                background-color: #ffffff;
+                padding: 4px;
+                font-size: 13px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #4a4a4a;
+            }
+        """)
 
         # Строка поиска
         self.search_line_edit = QLineEdit(self)

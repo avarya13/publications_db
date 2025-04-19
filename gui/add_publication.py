@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QAbstractItemView,
+    QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QAbstractItemView, QScrollArea,
     QComboBox, QListWidget, QHBoxLayout, QMessageBox, QWidget, QListWidgetItem, QCheckBox
 )
 from PyQt6.QtCore import Qt
@@ -11,19 +11,21 @@ class AddPublicationDialog(QDialog):
         super().__init__()
         self.session = session
         self.setWindowTitle("Добавить публикацию")
-        self.setGeometry(200, 200, 500, 500)
+        # self.showFullScreen()  # Включаем полноэкранный режим
 
         layout = QVBoxLayout()
 
         # Поле Названия (обязательное)
         self.title_input = QLineEdit(self)
         self.title_input.setPlaceholderText("Название (обязательно)")
+        self.title_input.setFixedHeight(30)
         layout.addWidget(QLabel("Название:"))
         layout.addWidget(self.title_input)
 
         # Поле года (обязательное)
         self.year_input = QLineEdit(self)
         self.year_input.setPlaceholderText("Год (обязательно)")
+        self.year_input.setFixedHeight(30)
         layout.addWidget(QLabel("Год:"))
         layout.addWidget(self.year_input)
 
@@ -34,24 +36,16 @@ class AddPublicationDialog(QDialog):
         layout.addWidget(QLabel("Журнал:"))
         layout.addWidget(self.journal_combo)
 
-        # Список авторов с множественным выбором и поиском
-        # self.authors_list = QListWidget(self)
-        # self.authors_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        # self.author_search = QLineEdit(self)
-        # self.author_search.setPlaceholderText("Поиск автора...")
-        # self.author_search.textChanged.connect(self.filter_authors)
-        # layout.addWidget(QLabel("Авторы (обязательно):"))
-        # layout.addWidget(self.author_search)
-        # layout.addWidget(self.authors_list)
-        # self.load_authors()
-
+        # Авторы
         self.author_search = QLineEdit(self)
         self.author_search.setPlaceholderText("Поиск автора...")
+        self.author_search.setFixedHeight(30)
         self.author_search.textChanged.connect(self.filter_authors)
         layout.addWidget(QLabel("Авторы (обязательно):"))
         layout.addWidget(self.author_search)
-        
+
         self.authors_list = QListWidget(self)
+        self.authors_list.setFixedHeight(400)  
         self.load_authors()
         layout.addWidget(self.authors_list)
 
@@ -61,50 +55,46 @@ class AddPublicationDialog(QDialog):
         self.selected_authors_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.selected_authors_container)
 
-        # Список институтов с множественным выбором и поиском
+        # Выбор института
         self.institution_combo = QComboBox(self)
         self.institution_combo.setEditable(True)
         self.load_institutions()
         layout.addWidget(QLabel("Организация (обязательно):"))
         layout.addWidget(self.institution_combo)
 
-        # self.institutions_list = QListWidget(self)
-        # self.institutions_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        # self.institution_search = QLineEdit(self)
-        # self.institution_search.setPlaceholderText("Поиск института...")
-        # self.institution_search.textChanged.connect(self.filter_institutions)
-        # layout.addWidget(QLabel("Организация (обязательно):"))
-        # layout.addWidget(self.institution_search)
-        # layout.addWidget(self.institutions_list)
-        # self.load_institutions()
-
-        # Поля для метаданных
+        # Метаданные
         self.doi_input = QLineEdit(self)
         self.doi_input.setPlaceholderText("DOI")
+        self.doi_input.setFixedHeight(30)
         layout.addWidget(QLabel("DOI:"))
         layout.addWidget(self.doi_input)
 
         self.link_input = QLineEdit(self)
         self.link_input.setPlaceholderText("Ссылка на статью")
+        self.link_input.setFixedHeight(30)
         layout.addWidget(QLabel("Ссылка:"))
         layout.addWidget(self.link_input)
 
         self.keywords_input = QLineEdit(self)
         self.keywords_input.setPlaceholderText("Ключевые слова (через запятую)")
+        self.keywords_input.setFixedHeight(30)
         layout.addWidget(QLabel("Ключевые слова:"))
         layout.addWidget(self.keywords_input)
 
+        # Аннотация
         self.abstract_input = QLineEdit(self)
         self.abstract_input.setPlaceholderText("Аннотация")
+        self.abstract_input.setFixedHeight(60)
         layout.addWidget(QLabel("Аннотация:"))
         layout.addWidget(self.abstract_input)
 
         self.citations_input = QLineEdit(self)
         self.citations_input.setPlaceholderText("Цитирования")
+        self.citations_input.setFixedHeight(30)
         layout.addWidget(QLabel("Цитирования:"))
         layout.addWidget(self.citations_input)
 
-        # Выбор языка через ComboBox
+        # Выбор языка
         self.language_combo = QComboBox(self)
         self.language_combo.addItems(["Русский", "English", "Deutsch"])
         layout.addWidget(QLabel("Язык:"))
@@ -115,7 +105,90 @@ class AddPublicationDialog(QDialog):
         self.add_button.clicked.connect(self.add_publication)
         layout.addWidget(self.add_button)
 
-        self.setLayout(layout)
+        # Добавление прокрутки
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(QWidget())
+        scroll_area.widget().setLayout(layout)
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(scroll_area)
+
+        # Применяем стиль
+        self.setStyleSheet("""
+            QWidget {
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+                background-color: #f9f7f3;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+
+            QLineEdit:focus {
+                border-color: #6e6e6e;
+            }
+
+            QLabel {
+                font-weight: bold;
+                color: #4a4a4a;
+            }
+
+            QComboBox {
+                padding: 6px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+
+            QComboBox:focus {
+                border-color: #6e6e6e;
+            }
+
+            QPushButton {
+                padding: 8px 16px;
+                background-color: #e5e2d7;
+                color: #4a4a4a;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover:enabled {
+                background-color: #d8d5c9;
+                color: #333;
+            }
+
+            QPushButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+
+            QListWidget {
+                font-size: 13px;
+                background-color: #fdfcf9;
+                border: 1px solid #cfcabe;
+                border-radius: 5px;
+            }
+
+            QListWidget::item {
+                padding: 10px;
+                color: #4a4a4a;
+            }
+
+            QListWidget::item:selected {
+                background-color: #cfdcd2;
+                color: #333;
+            }
+
+            QListWidget::item:hover {
+                background-color: #e0e0e0;
+                color: #333;
+            }
+        """)
 
     def load_journals(self):
         """ Загружает список журналов из БД """

@@ -43,17 +43,35 @@ def get_all_journals(session, sort_by="name", descending=False):
 class JournalDetailsDialog(QDialog):
     def __init__(self, journal):
         super().__init__()
+        self.setGeometry(100, 100, 800, 900)
+
         self.setWindowTitle("Информация о журнале")
+        self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 6px 4px;
+            }
+        """)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
 
         def safe_label(text, value):
             return QLabel(f"{text}: {value if value else '—'}")
 
-        layout.addWidget(safe_label("Тип", journal['type']))
-        layout.addWidget(safe_label("Название", journal['name']))
-        layout.addWidget(safe_label("ISSN", journal['issn']))
-        layout.addWidget(safe_label("ISBN", journal['isbn']))
+        layout.addWidget(safe_label("Тип", journal.get('type')))
+        layout.addWidget(safe_label("Название", journal.get('name')))
+        layout.addWidget(safe_label("ISSN", journal.get('issn')))
+        layout.addWidget(safe_label("ISBN", journal.get('isbn')))
 
         self.setLayout(layout)
 
@@ -61,19 +79,64 @@ class JournalsTab(QWidget):
     def __init__(self, session_manager):
         super().__init__()
 
-        self.session = get_session()
-        self.layout = QVBoxLayout(self)
+        self.setStyleSheet("""
+            QWidget {
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+                background-color: #fdfcf9;
+            }
 
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QPushButton {
+                padding: 8px 14px;
+                background-color: #e5e2d7;
+                color: #3c3c3c;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover:enabled {
+                background-color: #d8d5c9;
+                color: #2b2b2b;
+            }
+
+            QPushButton:disabled {
+                background-color: #f0ede5;
+                color: #a0a0a0;
+                border: 1px solid #d0cec5;
+            }
+
+            QListWidget {
+                border: 1px solid #cfcfcf;
+                border-radius: 6px;
+                background-color: #ffffff;
+                padding: 4px;
+                font-size: 13px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #4a4a4a;
+            }
+        """)
+
+        self.session = get_session()
+        self.session_manager = session_manager
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(12)
+
+        # Кнопка сортировки
         self.sort_button = QPushButton("Сортировать по алфавиту (по убыванию)", self)
         self.sort_button.clicked.connect(self.toggle_sort_order)
         self.layout.addWidget(self.sort_button)
 
-        # Кнопка для сортировки
-        # self.sort_button = QPushButton("Сортировать по имени", self)
-        # self.sort_button.clicked.connect(self.sort_journals)
-        # self.layout.addWidget(self.sort_button)
-
-        # Строка поиска
+        # Поисковая строка
         self.search_line_edit = QLineEdit(self)
         self.search_line_edit.setPlaceholderText("Введите название журнала для поиска...")
         self.search_line_edit.textChanged.connect(self.filter_journals)
@@ -81,11 +144,12 @@ class JournalsTab(QWidget):
 
         # Список журналов
         self.journals_list = QListWidget(self)
-        self.journals_list.itemDoubleClicked.connect(self.on_journal_double_clicked)  # Connect double-click to function
+        self.journals_list.itemDoubleClicked.connect(self.on_journal_double_clicked)
         self.layout.addWidget(self.journals_list)
 
-        # Кнопки для добавления и редактирования журналов
+        # Кнопки управления
         self.buttons_layout = QHBoxLayout()
+
         self.add_button = QPushButton("Добавить журнал", self)
         self.add_button.clicked.connect(self.add_journal)
         self.buttons_layout.addWidget(self.add_button)
@@ -93,23 +157,23 @@ class JournalsTab(QWidget):
         self.edit_button = QPushButton("Редактировать журнал", self)
         self.edit_button.clicked.connect(self.edit_journal)
         self.buttons_layout.addWidget(self.edit_button)
-        self.layout.addLayout(self.buttons_layout)
 
         self.delete_button = QPushButton("Удалить журнал", self)
         self.delete_button.clicked.connect(self.delete_journal)
         self.buttons_layout.addWidget(self.delete_button)
 
-        # Лейбл для отображения количества журналов
+        self.layout.addLayout(self.buttons_layout)
+
+        # Счётчик журналов
         self.counter_label = QLabel("Всего журналов: 0", self)
         self.layout.addWidget(self.counter_label)
 
-        # Загружаем все журналы
+        # Загрузка журналов
         self.journals_data = []
         self.load_journals()
-        
-        self.session_manager = session_manager    
-        # self.role = self.session_manager.get_user_role()
-        self.configure_ui_for_role()  
+
+        # Конфигурация прав
+        self.configure_ui_for_role()
 
     def configure_ui_for_role(self):
         """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
@@ -266,9 +330,33 @@ class AddJournalDialog(QDialog):
     def __init__(self, session):
         super().__init__()
         self.setWindowTitle("Добавить журнал")
+        self.setGeometry(100, 100, 800, 900)
         self.session = session
 
-        # Layout for the dialog
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
+
         layout = QVBoxLayout()
         form_layout = QFormLayout()
 
@@ -284,7 +372,6 @@ class AddJournalDialog(QDialog):
 
         layout.addLayout(form_layout)
 
-        # Buttons
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
@@ -298,7 +385,7 @@ class AddJournalDialog(QDialog):
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
 
-        if not name: # or not type_ or not issn:
+        if not name:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
             return
 
@@ -310,14 +397,39 @@ class AddJournalDialog(QDialog):
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось добавить журнал: {e}")
 
+
 class EditJournalDialog(QDialog):
     def __init__(self, session, journal):
         super().__init__()
         self.setWindowTitle("Редактировать журнал")
+        self.setGeometry(100, 100, 800, 900)
         self.session = session
         self.journal = journal
 
-        # Layout for the dialog
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QLabel {
+                font-size: 13px;
+                color: #3b3b3b;
+                padding: 4px;
+            }
+
+            QDialogButtonBox {
+                padding-top: 10px;
+            }
+        """)
+
         layout = QVBoxLayout()
         form_layout = QFormLayout()
 
@@ -338,7 +450,6 @@ class EditJournalDialog(QDialog):
 
         layout.addLayout(form_layout)
 
-        # Buttons
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
