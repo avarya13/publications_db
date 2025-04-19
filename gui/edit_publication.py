@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (QTextEdit, QWidget,
 from PyQt6.QtCore import Qt
 
 from services.publication_service import create_publication, get_journals, get_authors, get_institutions, update_publication, get_publication_by_id
-from database.document import create_publication_metadata  
+# from database.document import create_publication_metadata  
 from database.relational import get_session
 from models.mongo import MongoDB
 from models.relational_models import Publication, Author
@@ -113,7 +113,7 @@ class EditPublicationDialog(QDialog):
             }
         """)
 
-        # 👉 Контент формы
+        # Контент формы
         form_widget = QWidget()
         form_layout = QVBoxLayout(form_widget)
 
@@ -222,12 +222,12 @@ class EditPublicationDialog(QDialog):
         self.save_button = QPushButton("Сохранить изменения")
         form_layout.addWidget(self.save_button)
 
-        # 👉 ScrollArea
+        # ScrollArea
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(form_widget)
 
-        # 👉 Основной layout диалога
+        # Основной layout диалога
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(scroll)
 

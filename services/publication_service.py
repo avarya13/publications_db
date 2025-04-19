@@ -66,7 +66,7 @@ import psycopg2
 
 from sqlalchemy.orm import joinedload
 
-def get_all_publications(session, title=None, author=None, journal=None, institution=None, keyword=None):
+def get_all_publications(session, title=None, author=None, journal=None, keyword=None): #institution=None, 
 
     try:
         query = session.query(Publication).options(
@@ -87,9 +87,9 @@ def get_all_publications(session, title=None, author=None, journal=None, institu
         if keyword:
             query = query.join(Publication.keywords).filter(Keyword.keyword.ilike(f"%{keyword}%"))
 
-        if institution:
-            # Через авторов → связку author_institution → institution
-            query = query.join(Publication.authors).join(Author.institutions).filter(Institution.name.ilike(f"%{institution}%"))
+        # if institution:
+        #     # Через авторов → связку author_institution → institution
+        #     query = query.join(Publication.authors).join(Author.institutions).filter(Institution.name.ilike(f"%{institution}%"))
 
         query = query.distinct().order_by(Publication.publication_id)
 
@@ -114,23 +114,40 @@ def get_authors(session):
 def get_institutions(session):
     return session.query(Institution).all()
 
-def create_publication(session, title, year, journal_id, authors, institutions):
-    new_publication = Publication(title=title, year=year, journal_id=journal_id)
-    session.add(new_publication)
-    session.commit()
+def create_publication(session, title, year, journal_id, author_ids, keywords):
+    # Создаем новую публикацию
+    publication = Publication(
+        title=title,
+        year=year,
+        journal_id=journal_id,
+    )
+    session.add(publication)
+    session.commit()  # Сохраняем публикацию, чтобы получить её ID
 
-    # Добавляем авторов и институты
-    for author_name in authors:
-        author = session.query(Author).filter_by(full_name=author_name).first()
-        if author:
-            new_publication.authors.append(author)
+    # Привязываем авторов к публикации
+    for author_id in author_ids:
+        author = session.query(Author).filter(Author.author_id == author_id).one()
+        publication.authors.append(author)
 
-    for inst_name in institutions:
-        institution = session.query(Institution).filter_by(name=inst_name).first()
-        if institution:
-            new_publication.institutions.append(institution)
+    # Привязываем ключевые слова к публикации
+    existing_keywords = {kw.keyword for kw in publication.keywords}
+    for keyword_text in keywords.split(','):
+        keyword_text = keyword_text.strip()
+        if keyword_text in existing_keywords:
+            continue  # Уже привязано
 
-    session.commit()
+        keyword = session.query(Keyword).filter(Keyword.keyword == keyword_text).first()
+        if not keyword:
+            keyword = Keyword(keyword=keyword_text)
+            session.add(keyword)
+            session.flush()  # Получаем ID без commit
+
+        if keyword not in publication.keywords:
+            publication.keywords.append(keyword)
+
+    session.commit()  # Сохраняем все изменения
+
+    return publication.publication_id
 
 def get_authors_by_publication(publication_id):
     session = get_session()

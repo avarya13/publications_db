@@ -9,7 +9,8 @@ from services.user_service import get_user_role
 from services.author_service import AuthorsTab
 from services.institution_service import InstitutionsTab
 from services.journal_service import JournalsTab
-from models.relational_models import UserRole, Publication
+from models.relational_models import UserRole, Publication, PublicationAuthor, PublicationKeyword
+from models.mongo import MongoDB
 from database.relational import get_session  
 from .login import LoginDialog
 from .register import RegisterDialog
@@ -95,8 +96,8 @@ class MainWindow(QWidget):
         self.search_author.setPlaceholderText("Имя автора...")
         self.search_journal = QLineEdit(self)
         self.search_journal.setPlaceholderText("Журнал...")
-        self.search_institution = QLineEdit(self)
-        self.search_institution.setPlaceholderText("Организация...")
+        # self.search_institution = QLineEdit(self)
+        # self.search_institution.setPlaceholderText("Организация...")
         self.search_keyword = QLineEdit(self)
         self.search_keyword.setPlaceholderText("Ключевое слово...")
 
@@ -110,8 +111,8 @@ class MainWindow(QWidget):
         search_fields_layout.addWidget(self.search_journal_label)
         search_fields_layout.addWidget(self.search_journal)
 
-        search_fields_layout.addWidget(self.search_institution_label)
-        search_fields_layout.addWidget(self.search_institution)
+        # search_fields_layout.addWidget(self.search_institution_label)
+        # search_fields_layout.addWidget(self.search_institution)
 
         search_fields_layout.addWidget(self.search_keyword_label)
         search_fields_layout.addWidget(self.search_keyword)
@@ -175,7 +176,7 @@ class MainWindow(QWidget):
         self.tabs.addTab(self.authors_tab, "Авторы")
 
         self.publishers_tab = JournalsTab(self.session_manager)
-        self.tabs.addTab(self.publishers_tab, "Издательства")
+        self.tabs.addTab(self.publishers_tab, "Журналы")
 
         self.organizations_tab = InstitutionsTab(self.session_manager)
         self.tabs.addTab(self.organizations_tab, "Организации")
@@ -426,6 +427,8 @@ class MainWindow(QWidget):
         else:
             self.edit_button.setEnabled(False)  # Блокируем кнопку, если пользователь не автор
 
+    
+
     def delete_publication(self):
         """Удаляет выбранную публикацию (только для администратора)"""
         selected_item = self.publications_list.currentItem()
@@ -444,17 +447,40 @@ class MainWindow(QWidget):
         confirm = QMessageBox.question(self, "Подтвердите удаление",
                                     f"Вы уверены, что хотите удалить публикацию:\n{publication.title}?",
                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-
         if confirm == QMessageBox.StandardButton.Yes:
             try:
+                # Удаляем связи с авторами
+                self.session.query(PublicationAuthor).filter_by(publication_id=publication_id).delete()
+                # Удаляем связи с ключевыми словами
+                self.session.query(PublicationKeyword).filter_by(publication_id=publication_id).delete()
+
+                # Удаляем саму публикацию
                 self.session.delete(publication)
                 self.session.commit()
+
+                # Удаляем мета-данные из MongoDB
+                mongo_db = MongoDB()
+                mongo_db.delete_metadata(publication_id)
+
                 QMessageBox.information(self, "Успех", "Публикация удалена.")
                 clear_publication_cache()
                 self.load_publications()
+
             except Exception as e:
                 self.session.rollback()
                 QMessageBox.critical(self, "Ошибка", f"Не удалось удалить публикацию.\n{str(e)}")
+
+
+        # if confirm == QMessageBox.StandardButton.Yes:
+        #     try:
+        #         self.session.delete(publication)
+        #         self.session.commit()
+        #         QMessageBox.information(self, "Успех", "Публикация удалена.")
+        #         clear_publication_cache()
+        #         self.load_publications()
+        #     except Exception as e:
+        #         self.session.rollback()
+        #         QMessageBox.critical(self, "Ошибка", f"Не удалось удалить публикацию.\n{str(e)}")
 
     def edit_profile(self):
         """Открывает диалог редактирования профиля пользователя"""
@@ -497,7 +523,7 @@ class MainWindow(QWidget):
         title_filter = self.search_title.text()
         author_filter = self.search_author.text()
         journal_filter = self.search_journal.text()
-        institution_filter = self.search_institution.text()
+        # institution_filter = self.search_institution.text()
         keyword_filter = self.search_keyword.text()
 
         try:
@@ -506,7 +532,7 @@ class MainWindow(QWidget):
                 title=title_filter,
                 author=author_filter,
                 journal=journal_filter,
-                institution=institution_filter, 
+                # institution=institution_filter, 
                 keyword=keyword_filter
             )
 
