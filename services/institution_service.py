@@ -38,7 +38,7 @@ class InstitutionDetailsDialog(QDialog):
     def __init__(self, institution):
         super().__init__()
         self.setWindowTitle("Информация об организации")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 200)
 
         self.setStyleSheet("""
             QDialog {
@@ -49,8 +49,9 @@ class InstitutionDetailsDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
@@ -70,8 +71,8 @@ class InstitutionDetailsDialog(QDialog):
             return QLabel(f"{text}: {value if value else '—'}")
 
         layout.addWidget(safe_label("Название", institution['name']))
-        layout.addWidget(safe_label("Город", institution['city']))
         layout.addWidget(safe_label("Страна", institution['country']))
+        layout.addWidget(safe_label("Город", institution['city']))
         layout.addWidget(safe_label("Улица", institution['street']))
         layout.addWidget(safe_label("Дом", institution['house']))
 
@@ -82,7 +83,7 @@ class AddInstitutionDialog(QDialog):
         super().__init__()
         self.session = session
         self.setWindowTitle("Добавить организацию")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 200)
 
         self.setStyleSheet("""
             QDialog {
@@ -93,8 +94,9 @@ class AddInstitutionDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
@@ -111,14 +113,14 @@ class AddInstitutionDialog(QDialog):
         layout = QFormLayout()
 
         self.name_input = QLineEdit(self)
-        self.city_input = QLineEdit(self)
         self.country_input = QLineEdit(self)
+        self.city_input = QLineEdit(self)
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
 
         layout.addRow("Название:", self.name_input)
-        layout.addRow("Город:", self.city_input)
         layout.addRow("Страна:", self.country_input)
+        layout.addRow("Город:", self.city_input)
         layout.addRow("Улица:", self.street_input)
         layout.addRow("Дом:", self.house_input)
 
@@ -157,7 +159,7 @@ class EditInstitutionDialog(QDialog):
         self.session = session
         self.institution = institution
         self.setWindowTitle("Редактировать организацию")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 200)
 
         self.setStyleSheet("""
             QDialog {
@@ -168,8 +170,9 @@ class EditInstitutionDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
@@ -186,20 +189,20 @@ class EditInstitutionDialog(QDialog):
         layout = QFormLayout()
 
         self.name_input = QLineEdit(self)
-        self.city_input = QLineEdit(self)
         self.country_input = QLineEdit(self)
+        self.city_input = QLineEdit(self)
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
 
         self.name_input.setText(institution['name'])
-        self.city_input.setText(institution['city'])
         self.country_input.setText(institution['country'])
+        self.city_input.setText(institution['city'])
         self.street_input.setText(institution['street'])
         self.house_input.setText(str(institution['house']))
 
         layout.addRow("Название:", self.name_input)
-        layout.addRow("Город:", self.city_input)
         layout.addRow("Страна:", self.country_input)
+        layout.addRow("Город:", self.city_input)
         layout.addRow("Улица:", self.street_input)
         layout.addRow("Дом:", self.house_input)
 
@@ -261,26 +264,27 @@ class InstitutionsTab(QWidget):
             QWidget {
                 font-size: 14px;
                 font-family: Segoe UI, sans-serif;
-                background-color: #fdfcf9;
+                background-color: #f9f7f3;
             }
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QPushButton {
-                padding: 8px 14px;
+                padding: 8px 16px;
                 background-color: #e5e2d7;
-                color: #3c3c3c;
+                color: #4a4a4a;
                 border: 1px solid #b8b4a8;
                 border-radius: 6px;
             }
 
             QPushButton:hover:enabled {
                 background-color: #d8d5c9;
-                color: #2b2b2b;
+                color: #333;
             }
 
             QPushButton:disabled {
@@ -290,11 +294,10 @@ class InstitutionsTab(QWidget):
             }
 
             QListWidget {
-                border: 1px solid #cfcfcf;
-                border-radius: 6px;
-                background-color: #ffffff;
-                padding: 4px;
                 font-size: 13px;
+                background-color: #fdfcf9;
+                border: 1px solid #cfcabe;
+                border-radius: 5px;
             }
 
             QLabel {

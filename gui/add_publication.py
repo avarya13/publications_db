@@ -4,12 +4,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from services.publication_service import create_publication, get_journals, get_authors, get_institutions
-from database.document import create_publication_metadata  
+from models.mongo import MongoDB  
 
 class AddPublicationDialog(QDialog):
     def __init__(self, session):
         super().__init__()
         self.session = session
+        self.selected_authors = []
         self.setWindowTitle("Добавить публикацию")
         # self.showFullScreen()  # Включаем полноэкранный режим
 
@@ -18,14 +19,14 @@ class AddPublicationDialog(QDialog):
         # Поле Названия (обязательное)
         self.title_input = QLineEdit(self)
         self.title_input.setPlaceholderText("Название (обязательно)")
-        self.title_input.setFixedHeight(30)
+        self.title_input.setFixedHeight(35)
         layout.addWidget(QLabel("Название:"))
         layout.addWidget(self.title_input)
 
         # Поле года (обязательное)
         self.year_input = QLineEdit(self)
         self.year_input.setPlaceholderText("Год (обязательно)")
-        self.year_input.setFixedHeight(30)
+        self.year_input.setFixedHeight(35)
         layout.addWidget(QLabel("Год:"))
         layout.addWidget(self.year_input)
 
@@ -39,7 +40,7 @@ class AddPublicationDialog(QDialog):
         # Авторы
         self.author_search = QLineEdit(self)
         self.author_search.setPlaceholderText("Поиск автора...")
-        self.author_search.setFixedHeight(30)
+        self.author_search.setFixedHeight(35)
         self.author_search.textChanged.connect(self.filter_authors)
         layout.addWidget(QLabel("Авторы (обязательно):"))
         layout.addWidget(self.author_search)
@@ -65,19 +66,19 @@ class AddPublicationDialog(QDialog):
         # Метаданные
         self.doi_input = QLineEdit(self)
         self.doi_input.setPlaceholderText("DOI")
-        self.doi_input.setFixedHeight(30)
+        self.doi_input.setFixedHeight(35)
         layout.addWidget(QLabel("DOI:"))
         layout.addWidget(self.doi_input)
 
         self.link_input = QLineEdit(self)
         self.link_input.setPlaceholderText("Ссылка на статью")
-        self.link_input.setFixedHeight(30)
+        self.link_input.setFixedHeight(35)
         layout.addWidget(QLabel("Ссылка:"))
         layout.addWidget(self.link_input)
 
         self.keywords_input = QLineEdit(self)
         self.keywords_input.setPlaceholderText("Ключевые слова (через запятую)")
-        self.keywords_input.setFixedHeight(30)
+        self.keywords_input.setFixedHeight(35)
         layout.addWidget(QLabel("Ключевые слова:"))
         layout.addWidget(self.keywords_input)
 
@@ -89,10 +90,57 @@ class AddPublicationDialog(QDialog):
         layout.addWidget(self.abstract_input)
 
         self.citations_input = QLineEdit(self)
-        self.citations_input.setPlaceholderText("Цитирования")
-        self.citations_input.setFixedHeight(30)
-        layout.addWidget(QLabel("Цитирования:"))
+        self.citations_input.setPlaceholderText("Цитирование")
+        self.citations_input.setFixedHeight(35)
+        layout.addWidget(QLabel("Цитирование:"))
         layout.addWidget(self.citations_input)
+
+        # Проекты
+        layout.addWidget(QLabel("Проекты:"))
+        self.projects_input = QLineEdit()
+        layout.addWidget(self.projects_input)
+
+        # Статус публикации
+        layout.addWidget(QLabel("Статус публикации:"))
+        self.status_input = QLineEdit()
+        layout.addWidget(self.status_input)
+
+        # Тип публикации
+        layout.addWidget(QLabel("Тип публикации:"))
+        self.type_input = QLineEdit()
+        layout.addWidget(self.type_input)
+
+        # Электронная библиография
+        layout.addWidget(QLabel("Электронная библиография:"))
+        self.bibliography_input = QLineEdit()
+        self.bibliography_input.setMinimumHeight(100)
+        layout.addWidget(self.bibliography_input)
+
+        # Цитирования
+        layout.addWidget(QLabel("Цитирования WoS:"))
+        self.citations_wos_input = QLineEdit()
+        layout.addWidget(self.citations_wos_input)
+
+        layout.addWidget(QLabel("Цитирования RSCI:"))
+        self.citations_rsci_input = QLineEdit()
+        layout.addWidget(self.citations_rsci_input)
+
+        layout.addWidget(QLabel("Цитирования Scopus:"))
+        self.citations_scopus_input = QLineEdit()
+        layout.addWidget(self.citations_scopus_input)
+
+        layout.addWidget(QLabel("Цитирования RINZ:"))
+        self.citations_rinz_input = QLineEdit()
+        layout.addWidget(self.citations_rinz_input)
+
+        layout.addWidget(QLabel("Цитирования ВАК:"))
+        self.citations_vak_input = QLineEdit()
+        layout.addWidget(self.citations_vak_input)
+
+        # Патент
+        layout.addWidget(QLabel("Дата подачи патента:"))
+        self.patent_date_input = QLineEdit()
+        layout.addWidget(self.patent_date_input)
 
         # Выбор языка
         self.language_combo = QComboBox(self)
@@ -197,49 +245,6 @@ class AddPublicationDialog(QDialog):
         for journal in journals:
             self.journal_combo.addItem(journal.name, userData=journal.journal_id)
 
-    # def load_authors(self):
-    #     """ Загружает список авторов из БД """
-    #     self.authors_list.clear()
-    #     authors = get_authors(self.session)
-    #     for author in authors:
-    #         self.authors_list.addItem(f"{author.full_name}")
-
-    # def load_authors(self):
-    #     self.authors_list.clear()
-    #     self.authors = get_authors(self.session)
-    #     for author in self.authors:
-    #         item = QListWidgetItem(author.full_name)
-    #         checkbox = QCheckBox()
-    #         self.authors_list.addItem(item)
-    #         self.authors_list.setItemWidget(item, checkbox)
-    #         checkbox.stateChanged.connect(lambda state, a=author: self.toggle_author(a, state))
-
-
-    # def load_authors(self):
-    #     self.authors_list.clear()
-    #     self.authors = get_authors(self.session)
-
-    #     print(self.authors)
-        
-    #     for author in self.authors:
-    #         widget = QWidget()
-            
-    #         layout = QHBoxLayout(widget)
-    #         layout.setContentsMargins(0, 0, 0, 0)
-            
-    #         checkbox = QCheckBox()
-    #         layout.addWidget(checkbox)
-            
-    #         label = QLabel(author.full_name)
-    #         layout.addWidget(label)
-            
-    #         checkbox.stateChanged.connect(lambda state, a=author: self.toggle_author(a, state))
-            
-    #         item = QListWidgetItem()
-    #         self.authors_list.addItem(item)
-    #         self.authors_list.setItemWidget(item, widget)
-
-
     def load_authors(self):
         self.authors_list.clear() 
         self.authors = get_authors(self.session) 
@@ -273,26 +278,6 @@ class AddPublicationDialog(QDialog):
             else:
                 item.setHidden(True)  
 
-    # def load_authors(self):
-    #     self.authors_list.clear()  # Очищаем список
-    #     self.authors = get_authors(self.session)  # Получаем список авторов
-        
-    #     for author in self.authors:
-    #         container = QWidget()
-    #         layout = QHBoxLayout(container) 
-            
-    #         label = QLabel(author.full_name)  
-    #         checkbox = QCheckBox()  
-            
-    #         layout.addWidget(label)
-    #         layout.addWidget(checkbox)
-            
-    #         item = QListWidgetItem()
-    #         self.authors_list.addItem(item)  
-    #         self.authors_list.setItemWidget(item, container) 
-    #         checkbox.stateChanged.connect(lambda state, a=author: self.toggle_author(a, state))
-    
-
     def load_institutions(self):
         """ Загружает список институтов из БД """
         self.institutions_list.clear()
@@ -300,24 +285,15 @@ class AddPublicationDialog(QDialog):
         for inst in institutions:
             self.institutions_list.addItem(f"{inst.name}")
 
-    # def filter_authors(self, text):
-    #     """Фильтрует список авторов по введенному тексту"""
-    #     self.authors_list.clear()
-    #     filtered = [a for a in self.authors if text.lower() in a.lower()]
-    #     self.authors_list.addItems(filtered)
-
-
-    # def filter_authors(self):
-    #     query = self.author_search.text().lower()
-    #     for i in range(self.authors_list.count()):
-    #         item = self.authors_list.item(i)
-    #         item.setHidden(query not in item.text().lower())
-
     def toggle_author(self, author, state):
         if state == Qt.CheckState.Checked.value:
-            self.add_selected_author(author.full_name)
+            if author not in self.selected_authors:
+                self.selected_authors.append(author)
+                print(f"Добавлен автор: {author.full_name}")
         else:
-            self.remove_selected_author(author.full_name)
+            if author in self.selected_authors:
+                self.selected_authors.remove(author)
+                print(f"Удалён автор: {author.full_name}")
 
     def add_selected_author(self, author_name):
         label = QLabel(author_name)
@@ -334,27 +310,6 @@ class AddPublicationDialog(QDialog):
         
         self.selected_authors_layout.addWidget(container)
         self.selected_authors_container.update()
-
-    # def remove_selected_author(self, author_name):
-    #     for i in reversed(range(self.selected_authors_layout.count())):
-    #         widget = self.selected_authors_layout.itemAt(i).widget()
-    #         if widget and widget.findChild(QLabel).text() == author_name:
-    #             widget.deleteLater()
-    #             break
-
-    # def remove_selected_author(self, author_name):
-    #     for i in reversed(range(self.selected_authors_layout.count())):
-    #         widget = self.selected_authors_layout.itemAt(i).widget()
-    #         if widget:
-    #             # Находим QLabel внутри widget и сравниваем с именем автора
-    #             label = widget.findChild(QLabel)
-    #             if label and label.text() == author_name:
-    #                 checkbox = widget.findChild(QCheckBox)
-    #                 if checkbox:
-    #                     checkbox.setChecked(False)  # Снимаем галочку с чекбокса
-
-    #                 widget.deleteLater()
-    #                 break
 
     def remove_selected_author(self, author_name):
         for i in reversed(range(self.selected_authors_layout.count())):
@@ -376,41 +331,65 @@ class AddPublicationDialog(QDialog):
         for institution in institutions:
             self.institution_combo.addItem(institution.name, institution.institution_id)
 
-
-    # def filter_institutions(self, text):
-    #     """Фильтрует список институтов по введенному тексту"""
-    #     self.institutions_list.clear()
-    #     filtered = [self.institutions_list.item(i).text() for i in range(self.institutions_list.count()) if text.lower() in self.institutions_list.item(i).text().lower()]
-
-    #     self.institutions_list.addItems(filtered)
-
-    # def add_publication(self):
-    #     """ Создает новую публикацию в базе """
-    #     title = self.title_input.text()
-    #     year = self.year_input.text()
-    #     journal_id = self.journal_combo.currentData()
-
-    #     selected_authors = [item.text() for item in self.authors_list.selectedItems()]
-    #     selected_institutions = [item.text() for item in self.institutions_list.selectedItems()]
-
-    #     if not title or not year.isdigit() or not journal_id or not selected_authors or not selected_institutions:
-    #         QMessageBox.warning(self, "Ошибка", "Заполните все поля и выберите хотя бы одного автора и институт.")
-    #         return
-
     def add_publication(self):
         title = self.title_input.text().strip()
         year = self.year_input.text().strip()
         journal_id = self.journal_combo.currentData()
         institution_id = self.institution_combo.currentData()
-        
-        try:
-            year = int(year)
-        except ValueError:
-            QMessageBox.warning(self, "Ошибка", "Год должен быть числом.")
+        doi = self.doi_input.text().strip()
+        link = self.link_input.text().strip()
+        keywords = self.keywords_input.text().strip()
+        abstract = self.abstract_input.text().strip()
+        citations = self.citations_input.text().strip()
+        projects=self.projects_input.text().strip(),
+        status=self.status_input.text().strip(),
+        type=self.type_input.text().strip(),
+        bibliography=self.bibliography_input.text().strip(),
+        citations_wos=self.citations_wos_input.text().strip(),
+        citations_rsci=self.citations_rsci_input.text().strip(),
+        citations_scopus=self.citations_scopus_input.text().strip(),
+        citations_rinz=self.citations_rinz_input.text().strip(),
+        citations_vak=self.citations_vak_input.text().strip(),
+        patent_date=self.patent_date_input.text().strip(),
+        language=self.language_combo.currentText()
+
+        # Проверка обязательных полей
+        if not title or not year or not self.selected_authors or not institution_id:
+            QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
             return
 
-        if not title or not journal_id or not institution_id:
-            QMessageBox.warning(self, "Ошибка", "Заполните все обязательные поля.")
-            return
-        
-        QMessageBox.information(self, "Успех", "Публикация успешно добавлена!")
+        try:
+            # Передаем только ID авторов, а не объекты
+            author_ids = [author.author_id for author in self.selected_authors]
+
+            # Сохраняем публикацию
+            publication_id = create_publication(self.session, title, year, journal_id, author_ids, keywords)
+
+            mongo_client = MongoDB()
+
+            # Создаем метаданные для публикации
+            mongo_client.create_publication_metadata(
+                publication_id=publication_id,
+                doi=doi,
+                link=link,
+                abstract=abstract,
+                citations=citations,
+                language=language, 
+                projects=projects,
+                status=status,
+                type=type,
+                bibliography=bibliography,
+                citations_wos=citations_wos,
+                citations_rsci=citations_rsci,
+                citations_scopus=citations_scopus,
+                citations_rinz=citations_rinz,
+                citations_vak=citations_vak,
+                patent_date=patent_date,
+            )
+
+            QMessageBox.information(self, "Успешно", "Публикация добавлена.")
+            self.accept()  # Закрыть диалог с результатом accept()
+
+        except Exception as e:
+            print(f"Не удалось сохранить публикацию:\n{str(e)}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить публикацию:\n{str(e)}")

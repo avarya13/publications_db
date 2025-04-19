@@ -10,30 +10,53 @@ class RegisterDialog(QDialog):
         self.session_manager = session_manager
 
         self.setWindowTitle("Регистрация пользователя")
-        self.setGeometry(200, 200, 300, 250)
+        self.setMinimumWidth(400)
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #fdfcf9;
+                font-size: 14px;
+                font-family: Segoe UI, sans-serif;
+            }
+
+            QLabel {
+                font-size: 13px;
+                padding-top: 6px;
+                color: #3b3b3b;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+            }
+
+            QPushButton {
+                padding: 8px 16px;
+                background-color: #e5e2d7;
+                color: #4a4a4a;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+            }
+
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
 
         layout = QVBoxLayout()
 
-        # Поле для ввода имени пользователя
         self.username_input = QLineEdit(self)
         self.username_input.setPlaceholderText("Имя пользователя")
         layout.addWidget(QLabel("Имя пользователя:"))
         layout.addWidget(self.username_input)
 
-        # Поле для ввода пароля
         self.password_input = QLineEdit(self)
         self.password_input.setPlaceholderText("Пароль")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(QLabel("Пароль:"))
         layout.addWidget(self.password_input)
 
-        # Выпадающий список для выбора роли
-        # self.role_combo = QComboBox(self)
-        # self.role_combo.addItems([Permissions.FULL_ACCESS, Permissions.READ_ONLY, Permissions.COMBINED])
-        # layout.addWidget(QLabel("Роль:"))
-        # layout.addWidget(self.role_combo)
-
-        # Кнопка для добавления пользователя
         self.register_button = QPushButton("Зарегистрировать", self)
         self.register_button.clicked.connect(self.register_user)
         layout.addWidget(self.register_button)

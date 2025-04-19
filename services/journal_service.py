@@ -43,7 +43,7 @@ def get_all_journals(session, sort_by="name", descending=False):
 class JournalDetailsDialog(QDialog):
     def __init__(self, journal):
         super().__init__()
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 200)
 
         self.setWindowTitle("Информация о журнале")
         self.setMinimumWidth(400)
@@ -83,26 +83,27 @@ class JournalsTab(QWidget):
             QWidget {
                 font-size: 14px;
                 font-family: Segoe UI, sans-serif;
-                background-color: #fdfcf9;
+                background-color: #f9f7f3;
             }
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QPushButton {
-                padding: 8px 14px;
+                padding: 8px 16px;
                 background-color: #e5e2d7;
-                color: #3c3c3c;
+                color: #4a4a4a;
                 border: 1px solid #b8b4a8;
                 border-radius: 6px;
             }
 
             QPushButton:hover:enabled {
                 background-color: #d8d5c9;
-                color: #2b2b2b;
+                color: #333;
             }
 
             QPushButton:disabled {
@@ -112,11 +113,10 @@ class JournalsTab(QWidget):
             }
 
             QListWidget {
-                border: 1px solid #cfcfcf;
-                border-radius: 6px;
-                background-color: #ffffff;
-                padding: 4px;
                 font-size: 13px;
+                background-color: #fdfcf9;
+                border: 1px solid #cfcabe;
+                border-radius: 5px;
             }
 
             QLabel {
@@ -131,11 +131,6 @@ class JournalsTab(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(12)
 
-        # Кнопка сортировки
-        self.sort_button = QPushButton("Сортировать по алфавиту (по убыванию)", self)
-        self.sort_button.clicked.connect(self.toggle_sort_order)
-        self.layout.addWidget(self.sort_button)
-
         # Поисковая строка
         self.search_line_edit = QLineEdit(self)
         self.search_line_edit.setPlaceholderText("Введите название журнала для поиска...")
@@ -149,6 +144,11 @@ class JournalsTab(QWidget):
 
         # Кнопки управления
         self.buttons_layout = QHBoxLayout()
+
+        # Кнопка сортировки
+        self.sort_button = QPushButton("Сортировать по алфавиту (по убыванию)", self)
+        self.sort_button.clicked.connect(self.toggle_sort_order)
+        self.buttons_layout.addWidget(self.sort_button)
 
         self.add_button = QPushButton("Добавить журнал", self)
         self.add_button.clicked.connect(self.add_journal)
@@ -330,7 +330,7 @@ class AddJournalDialog(QDialog):
     def __init__(self, session):
         super().__init__()
         self.setWindowTitle("Добавить журнал")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 200)
         self.session = session
 
         self.setStyleSheet("""
@@ -342,8 +342,9 @@ class AddJournalDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
@@ -402,7 +403,7 @@ class EditJournalDialog(QDialog):
     def __init__(self, session, journal):
         super().__init__()
         self.setWindowTitle("Редактировать журнал")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 200)
         self.session = session
         self.journal = journal
 
@@ -415,8 +416,9 @@ class EditJournalDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {

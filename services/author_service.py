@@ -1,4 +1,5 @@
 from database.relational import get_session
+from PyQt6.QtWidgets import QSizePolicy
 from models.relational_models import Author, UserRole
 from models.redis_client import redis_client
 from gui.assign_author import AssignAuthorDialog
@@ -57,7 +58,7 @@ def get_all_authors(session, sort_by="last_name", sort_order="asc"):
 class AuthorDetailsDialog(QDialog):
     def __init__(self, author):
         super().__init__()
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 500, 400)
         self.setWindowTitle("Информация об авторе")
         self.setStyleSheet("""
             QDialog {
@@ -68,14 +69,16 @@ class AuthorDetailsDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
                 font-size: 13px;
                 color: #3b3b3b;
-                padding: 4px;
+                padding: 1px;  /* уменьшено с 4px до 1px */
+                margin: 0px;   /* полностью убраны внешние отступы */
             }
 
             QDialogButtonBox {
@@ -84,9 +87,15 @@ class AuthorDetailsDialog(QDialog):
         """)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)  # минимальное расстояние между элементами
 
         def safe_label(text, value):
-            return QLabel(f"{text}: {value if value else '—'}")
+            label = QLabel(f"{text}: {value if value else '—'}")
+            label.setContentsMargins(0, 0, 0, 0)            
+            label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            label.setFixedHeight(18)  
+            return label
 
         layout.addWidget(safe_label("Имя", author['first_name']))
         layout.addWidget(safe_label("Фамилия", author['last_name']))
@@ -94,10 +103,9 @@ class AuthorDetailsDialog(QDialog):
         layout.addWidget(safe_label("Полное имя (англ.)", author['full_name_eng']))
         layout.addWidget(safe_label("Email", author['email']))
         layout.addWidget(safe_label("ORCID", author['orcid']))
-        # self.counter_label = QLabel(f"Всего авторов: {total_authors_count}", self)
-        # layout.addWidget(self.counter_label)
 
         self.setLayout(layout)
+
 
 class AuthorsTab(QWidget):
     def __init__(self, session_manager):
@@ -110,26 +118,27 @@ class AuthorsTab(QWidget):
             QWidget {
                 font-size: 14px;
                 font-family: Segoe UI, sans-serif;
-                background-color: #fdfcf9;
+                background-color: #f9f7f3;
             }
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QPushButton {
-                padding: 8px 14px;
+                padding: 8px 16px;
                 background-color: #e5e2d7;
-                color: #3c3c3c;
+                color: #4a4a4a;
                 border: 1px solid #b8b4a8;
                 border-radius: 6px;
             }
 
             QPushButton:hover:enabled {
                 background-color: #d8d5c9;
-                color: #2b2b2b;
+                color: #333;
             }
 
             QPushButton:disabled {
@@ -139,25 +148,18 @@ class AuthorsTab(QWidget):
             }
 
             QListWidget {
-                border: 1px solid #cfcfcf;
-                border-radius: 6px;
-                background-color: #ffffff;
-                padding: 4px;
                 font-size: 13px;
+                background-color: #fdfcf9;
+                border: 1px solid #cfcabe;
+                border-radius: 5px;
             }
 
             QLabel {
-                font-size: 13px;
                 color: #4a4a4a;
             }
         """)
 
-        # Если роль пользователя администратор, показываем кнопку для назначения пользователя автором
-        self.assign_button = QPushButton("Назначить пользователя автором", self)
-        self.assign_button.clicked.connect(self.open_assign_dialog)
-        self.layout.addWidget(self.assign_button)
-
-        # Строка поиска
+        # Поиск по авторам
         self.search_line_edit = QLineEdit(self)
         self.search_line_edit.setPlaceholderText("Введите имя автора для поиска...")
         self.search_line_edit.textChanged.connect(self.filter_authors)
@@ -168,23 +170,11 @@ class AuthorsTab(QWidget):
         self.layout.addWidget(self.authors_list)
         self.authors_list.itemDoubleClicked.connect(self.on_author_double_clicked)
 
-        # Кнопки для добавления и редактирования авторов
-        self.buttons_layout = QHBoxLayout()
-        self.add_button = QPushButton("Добавить автора", self)
-        self.add_button.clicked.connect(self.add_author)
-        self.buttons_layout.addWidget(self.add_button)
-
-        self.edit_button = QPushButton("Редактировать автора", self)
-        self.edit_button.clicked.connect(self.edit_author)
-        self.buttons_layout.addWidget(self.edit_button)
-
-        self.layout.addLayout(self.buttons_layout)
-
-        # Лейбл для отображения количества авторов
+        # Лейбл количества авторов
         self.counter_label = QLabel("Всего авторов: 0", self)
         self.layout.addWidget(self.counter_label)
 
-        # Кнопки для сортировки
+        # Кнопки сортировки
         self.sort_asc_button = QPushButton("Сортировать по фамилии (А-Я)", self)
         self.sort_asc_button.clicked.connect(self.sort_by_last_name_asc)
         self.layout.addWidget(self.sort_asc_button)
@@ -193,18 +183,36 @@ class AuthorsTab(QWidget):
         self.sort_desc_button.clicked.connect(self.sort_by_last_name_desc)
         self.layout.addWidget(self.sort_desc_button)
 
-        self.authors_list.selectionModel().selectionChanged.connect(self.on_author_selected)
+        # Кнопки управления (2 строки по 2 кнопки)
+        self.buttons_row1 = QHBoxLayout()
+        self.add_button = QPushButton("Добавить автора", self)
+        self.add_button.clicked.connect(self.add_author)
+        self.buttons_row1.addWidget(self.add_button)
+
+        self.edit_button = QPushButton("Редактировать автора", self)
+        self.edit_button.clicked.connect(self.edit_author)
+        self.buttons_row1.addWidget(self.edit_button)
+        self.layout.addLayout(self.buttons_row1)
+
+        self.buttons_row2 = QHBoxLayout()
+        self.assign_button = QPushButton("Назначить пользователя автором", self)
+        self.assign_button.clicked.connect(self.open_assign_dialog)
+        self.buttons_row2.addWidget(self.assign_button)
 
         self.delete_button = QPushButton("Удалить автора", self)
         self.delete_button.clicked.connect(self.delete_author)
-        self.buttons_layout.addWidget(self.delete_button)
+        self.buttons_row2.addWidget(self.delete_button)
+        self.layout.addLayout(self.buttons_row2)
 
-        # Загружаем всех авторов
+        # Выбор элемента
+        self.authors_list.selectionModel().selectionChanged.connect(self.on_author_selected)
+
+        # Загрузка данных
         self.authors_data = []
         self.load_authors(sort_by="last_name", sort_order="asc")
 
-        self.session_manager = session_manager    
-        self.configure_ui_for_role()  
+        self.session_manager = session_manager
+        self.configure_ui_for_role()
 
     def configure_ui_for_role(self):
         self.role = self.session_manager.get_user_role()
@@ -387,7 +395,7 @@ class AddAuthorDialog(QDialog):
     def __init__(self, session):
         super().__init__()
         self.session = session
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 500, 400)
         self.setWindowTitle("Добавить нового автора")
         self.setStyleSheet("""
             QDialog {
@@ -398,8 +406,9 @@ class AddAuthorDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
@@ -414,6 +423,9 @@ class AddAuthorDialog(QDialog):
         """)
         
         layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(4)
+
 
         # Полное имя (обязательное поле)
         self.full_name_label = QLabel("Полное имя*:")
@@ -496,7 +508,7 @@ class AddAuthorDialog(QDialog):
 class EditAuthorDialog(QDialog):
     def __init__(self, session, author):
         super().__init__()
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 500, 400)
         self.session = session
         self.author = author
         self.setWindowTitle(f"Редактировать автора: {author['full_name']}")
@@ -509,8 +521,9 @@ class EditAuthorDialog(QDialog):
 
             QLineEdit {
                 padding: 6px;
-                border: 1px solid #cccccc;
-                border-radius: 4px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
             }
 
             QLabel {
@@ -525,6 +538,9 @@ class EditAuthorDialog(QDialog):
         """)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(4)
+
 
         def add_labeled_input(label_text, initial_value=""):
             label = QLabel(label_text)
