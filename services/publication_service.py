@@ -1,5 +1,3 @@
-import psycopg2
-from collections import namedtuple
 from database.relational import get_session
 from models.relational_models import Publication
 from services.user_service import get_user_role
@@ -9,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from models.mongo import MongoDB
 from models.redis_client import redis_client
-import redis
+from sqlalchemy.orm import joinedload
 import json
 import hashlib
 
@@ -62,9 +60,6 @@ def can_user_view_publication(user):
 #     return publications
 
 
-import psycopg2
-
-from sqlalchemy.orm import joinedload
 
 def get_all_publications(session, title=None, author=None, journal=None, keyword=None): #institution=None, 
 
