@@ -8,13 +8,16 @@ from services.publication_service import create_publication, get_journals, get_a
 # from database.document import create_publication_metadata  
 from database.relational import get_session
 from models.mongo import MongoDB
-from models.relational_models import Publication, Author, Journal
+from models.relational_models import Publication, Author, Journal, Keyword
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton,
     QComboBox, QListWidget, QAbstractItemView, QHBoxLayout, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from models.relational_models import UserRole
+from sqlalchemy import func
+from services.publication_service import clear_publication_cache
+from models.mongo import MongoDB
 
 class EditPublicationDialog(QDialog):
     def __init__(self, session=None, publication=None, user_role=None, is_author_of_publication=False):
@@ -190,30 +193,39 @@ class EditPublicationDialog(QDialog):
         self.doi_input = QLineEdit()
         form_layout.addWidget(self.doi_input)
 
+        # Ссылка
+        form_layout.addWidget(QLabel("Ссылка:"))
+        self.link_input = QLineEdit()
+        form_layout.addWidget(self.link_input)
+
         # Электронная библиография
         form_layout.addWidget(QLabel("Электронная библиография:"))
         self.bibliography_input = QTextEdit()
         self.bibliography_input.setMinimumHeight(100)
         form_layout.addWidget(self.bibliography_input)
 
-        # Цитирования
-        form_layout.addWidget(QLabel("Цитирования WoS:"))
+        # Цитирование
+        form_layout.addWidget(QLabel("Цитирование:"))
+        self.citation_input = QLineEdit()
+        form_layout.addWidget(self.citation_input)
+
+        form_layout.addWidget(QLabel("Цитируется WoS:"))
         self.citations_wos_input = QLineEdit()
         form_layout.addWidget(self.citations_wos_input)
 
-        form_layout.addWidget(QLabel("Цитирования RSCI:"))
+        form_layout.addWidget(QLabel("Цитируется RSCI:"))
         self.citations_rsci_input = QLineEdit()
         form_layout.addWidget(self.citations_rsci_input)
 
-        form_layout.addWidget(QLabel("Цитирования Scopus:"))
+        form_layout.addWidget(QLabel("Цитируется Scopus:"))
         self.citations_scopus_input = QLineEdit()
         form_layout.addWidget(self.citations_scopus_input)
 
-        form_layout.addWidget(QLabel("Цитирования RINZ:"))
+        form_layout.addWidget(QLabel("Цитируется RINZ:"))
         self.citations_rinz_input = QLineEdit()
         form_layout.addWidget(self.citations_rinz_input)
 
-        form_layout.addWidget(QLabel("Цитирования ВАК:"))
+        form_layout.addWidget(QLabel("Цитируется ВАК:"))
         self.citations_vak_input = QLineEdit()
         form_layout.addWidget(self.citations_vak_input)
 
@@ -221,6 +233,11 @@ class EditPublicationDialog(QDialog):
         form_layout.addWidget(QLabel("Дата подачи патента:"))
         self.patent_date_input = QLineEdit()
         form_layout.addWidget(self.patent_date_input)
+
+        # Язык
+        form_layout.addWidget(QLabel("Язык:"))
+        self.language_input = QLineEdit()
+        form_layout.addWidget(self.language_input)
 
         # Кнопка сохранения
         self.save_button = QPushButton("Сохранить изменения")
@@ -268,13 +285,16 @@ class EditPublicationDialog(QDialog):
         self.status_input.setText(self.publication.get('status', ''))
         self.type_input.setText(self.publication.get('type', ''))
         self.doi_input.setText(self.publication.get('doi', ''))
+        self.link_input.setText(self.publication.get('link', ''))
         self.bibliography_input.setPlainText(self.publication.get('bibliography', ''))
+        self.citation_input.setText(str(self.publication.get('citations', '')))
         self.citations_wos_input.setText(str(self.publication.get('citations_wos', '')))
         self.citations_rsci_input.setText(str(self.publication.get('citations_rsci', '')))
         self.citations_scopus_input.setText(str(self.publication.get('citations_scopus', '')))
         self.citations_rinz_input.setText(str(self.publication.get('citations_rinz', '')))
         self.citations_vak_input.setText(str(self.publication.get('citations_vak', '')))
         self.patent_date_input.setText(self.publication.get('patent_date', ''))
+        self.language_input.setText(self.publication.get('language', ''))
 
         journal_id = self.publication.get('journal_id')
         if journal_id:
@@ -301,6 +321,32 @@ class EditPublicationDialog(QDialog):
             if item.data(Qt.ItemDataRole.UserRole) in selected_author_ids:
                 item.setSelected(True)
 
+            # Загружаем метаданные из MongoDB
+        mongo_db = MongoDB()
+        metadata = mongo_db.get_metadata(self.publication_id)
+        
+        if metadata:
+            # Заполняем поля метаданных
+            self.abstract_input.setPlainText(metadata.get("abstract", ""))
+            self.projects_input.setText(metadata.get("projects", ""))
+            self.status_input.setText(metadata.get("status", ""))
+            self.type_input.setText(metadata.get("type", ""))
+            self.doi_input.setText(metadata.get("doi", ""))
+            self.link_input.setText(metadata.get("link", ""))
+            self.language_input.setText(metadata.get("language", ""))
+            self.bibliography_input.setPlainText(metadata.get("bibliography", ""))
+            self.citation_input.setText(metadata.get("citations", ""))
+            self.patent_date_input.setText(metadata.get("patent_date", ""))
+            
+            # Заполняем данные о цитировании
+            self.citations_wos_input.setText(metadata.get("wos", ""))
+            self.citations_rsci_input.setText(metadata.get("rsci", ""))
+            self.citations_scopus_input.setText(metadata.get("scopus", ""))
+            self.citations_rinz_input.setText(metadata.get("rinz", ""))
+            self.citations_vak_input.setText(metadata.get("vak", ""))
+        
+        return True
+
     def configure_ui_for_role(self):
         """Настройка доступности элементов интерфейса в зависимости от роли"""
         if self.user_role == UserRole.GUEST:
@@ -326,7 +372,9 @@ class EditPublicationDialog(QDialog):
         self.status_input.setReadOnly(True)
         self.type_input.setReadOnly(True)
         self.doi_input.setReadOnly(True)
+        self.link_input.setReadOnly(True)
         self.bibliography_input.setReadOnly(True)
+        self.citation_input.setReadOnly(True)
         self.citations_wos_input.setReadOnly(True)
         self.citations_rsci_input.setReadOnly(True)
         self.citations_scopus_input.setReadOnly(True)
@@ -335,6 +383,9 @@ class EditPublicationDialog(QDialog):
         self.patent_date_input.setReadOnly(True)
         self.btn_add_to_publication.setDisabled(True)
         self.btn_remove_from_publication.setDisabled(True)
+        self.link_input.setReadOnly(True)
+        self.language_input.setReadOnly(True)
+        self.citation_input.setReadOnly(True)
 
     def set_editable_except_authors(self):
         """Отключаем редактирование списка авторов для авторов публикации"""
@@ -362,61 +413,122 @@ class EditPublicationDialog(QDialog):
         self.patent_date_input.setReadOnly(False)
         self.btn_add_to_publication.setDisabled(False)
         self.btn_remove_from_publication.setDisabled(False)
+        self.link_input.setReadOnly(False)
+        self.language_input.setReadOnly(False)
+        self.citation_input.setReadOnly(False)
 
     def save_changes(self):
-        # Получение новых данных
-        title = self.title_input.text()
-        year = self.year_input.text()
-        abstract = self.abstract_input.toPlainText()
-        keywords = self.keyword_input.toPlainText()
-        projects = self.projects_input.text()
-        status = self.status_input.text()
-        pub_type = self.type_input.text()
-        doi = self.doi_input.text()
-        bibliography = self.bibliography_input.toPlainText()
-        citations = {
-            "wos": self.citations_wos_input.text(),
-            "rsci": self.citations_rsci_input.text(),
-            "scopus": self.citations_scopus_input.text(),
-            "rinz": self.citations_rinz_input.text(),
-            "vak": self.citations_vak_input.text(),
-        }
-        patent_date = self.patent_date_input.text()
-        journal_id = self.journal_combo.currentData()
-        selected_authors = [self.authors_list.item(i).data(Qt.ItemDataRole.UserRole)
-                    for i in range(self.authors_list.count())]
-
-        # selected_authors = [self.authors_list.item(i).data(Qt.ItemDataRole.UserRole)
-        #                     for i in range(self.authors_list.count())
-        #                     if self.authors_list.item(i).isSelected()]
-
         try:
-            publication = self.session.query(Publication).get(self.publication_id)
-            publication.title = title
-            publication.year = year
-            publication.abstract = abstract
-            publication.keywords = keywords
-            publication.projects = projects
-            publication.status = status
-            publication.type = pub_type
-            publication.doi = doi
-            publication.bibliography = bibliography
-            publication.citations_wos = citations["wos"]
-            publication.citations_rsci = citations["rsci"]
-            publication.citations_scopus = citations["scopus"]
-            publication.citations_rinz = citations["rinz"]
-            publication.citations_vak = citations["vak"]
-            publication.patent_date = patent_date
-            publication.journal_id = journal_id
-            publication.authors = self.session.query(Author).filter(Author.author_id.in_(selected_authors)).all()
+            # Get data from form inputs
+            title = self.title_input.text()
+            year = self.year_input.text()
+            abstract = self.abstract_input.toPlainText()
+            keyword_text = self.keyword_input.toPlainText()
+            projects = self.projects_input.text()
+            status = self.status_input.text()
+            pub_type = self.type_input.text()
+            doi = self.doi_input.text()
+            link = self.link_input.text()
+            language = self.language_input.text()
+            citations = self.citation_input.text()
+            bibliography = self.bibliography_input.toPlainText()
+            citations_bool = {
+                "wos": self.citations_wos_input.text(),
+                "rsci": self.citations_rsci_input.text(),
+                "scopus": self.citations_scopus_input.text(),
+                "rinz": self.citations_rinz_input.text(),
+                "vak": self.citations_vak_input.text(),
+            }
+            patent_date = self.patent_date_input.text()
+            journal_id = self.journal_combo.currentData()
+            
+            # Get selected authors
+            selected_authors = [
+                self.authors_list.item(i).data(Qt.ItemDataRole.UserRole)
+                for i in range(self.authors_list.count())
+            ]
 
+            # Get publication from PostgreSQL
+            publication = self.session.query(Publication).get(self.publication_id)
+            if not publication:
+                raise ValueError("Publication not found")
+
+            # Update PostgreSQL fields
+            publication.title = title
+            publication.year = int(year) if year else None
+            publication.journal_id = journal_id
+
+            # Update authors relationship
+            publication.authors = self.session.query(Author).filter(
+                Author.author_id.in_(selected_authors)
+            ).all()
+
+            # Handle keywords for PostgreSQL
+            if keyword_text:
+                keyword_list = []
+                for separator in [',', ';', '\n']:
+                    if separator in keyword_text:
+                        keyword_list = [k.strip() for k in keyword_text.split(separator) if k.strip()]
+                        break
+                
+                if not keyword_list:
+                    keyword_list = [keyword_text.strip()] if keyword_text.strip() else []
+                
+                publication.keywords = []
+                for keyword_name in keyword_list:
+                    keyword = self.session.query(Keyword).filter(
+                        func.lower(Keyword.keyword) == func.lower(keyword_name)
+                    ).first()
+                    
+                    if not keyword:
+                        keyword = Keyword(name=keyword_name)
+                        self.session.add(keyword)
+                        self.session.flush()
+                    
+                    publication.keywords.append(keyword)
+
+            # Prepare MongoDB data
+            mongo_data = {
+                "publication_id": publication.publication_id,
+                "abstract": abstract,
+                "projects": projects,
+                "status": status,
+                "type": pub_type,
+                "doi": doi,
+                "link": link,
+                "bibliography": bibliography,
+                "citations": citations,
+                "citations_wos": citations_bool['wos'],
+                "citations_rsci": citations_bool['rsci'],
+                "citations_scopus": citations_bool['scopus'],
+                "citations_rinz": citations_bool['rinz'],
+                "citations_vak": citations_bool['vak'],
+                "language": language,
+                "patent_date": patent_date,
+            }
+
+            # Save to MongoDB
+            mongo_db = MongoDB()
+            mongo_db.update_metadata(publication.publication_id, mongo_data)
+
+            # Commit PostgreSQL changes
             self.session.commit()
+            clear_publication_cache()
+            
             QMessageBox.information(self, "Успех", "Публикация обновлена.")
             self.accept()
+            
+        except ValueError as ve:
+            self.session.rollback()
+            QMessageBox.critical(self, "Ошибка", f"Ошибка в данных: {ve}")
         except Exception as e:
             self.session.rollback()
             print(f"Не удалось сохранить изменения: {e}")
-            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить изменения: {e}")
+            QMessageBox.critical(
+                self, 
+                "Ошибка", 
+                f"Не удалось сохранить изменения: {str(e)}"
+            )
 
     def load_journals(self):
         """Загружает список журналов из БД"""
@@ -454,15 +566,35 @@ class EditPublicationDialog(QDialog):
             else:
                 self.available_authors_list.addItem(item)
 
+    # def add_author_to_publication(self):
+    #     for item in self.available_authors_list.selectedItems():
+    #         self.available_authors_list.takeItem(self.available_authors_list.row(item))
+    #         self.authors_list.addItem(item)
+
+    # def remove_author_from_publication(self):
+    #     for item in self.authors_list.selectedItems():
+    #         self.authors_list.takeItem(self.authors_list.row(item))
+    #         self.available_authors_list.addItem(item)
+
     def add_author_to_publication(self):
         for item in self.available_authors_list.selectedItems():
-            self.available_authors_list.takeItem(self.available_authors_list.row(item))
-            self.authors_list.addItem(item)
+            # Переносим автора из доступных в текущие
+            author_id = item.data(Qt.ItemDataRole.UserRole)
+            author = self.session.query(Author).filter(Author.author_id == author_id).first()
+            if author:
+                self.publication.authors.append(author)  # Добавляем в связь
+                self.available_authors_list.takeItem(self.available_authors_list.row(item))
+                self.authors_list.addItem(item)
 
     def remove_author_from_publication(self):
         for item in self.authors_list.selectedItems():
-            self.authors_list.takeItem(self.authors_list.row(item))
-            self.available_authors_list.addItem(item)
+            # Переносим автора из текущих в доступные
+            author_id = item.data(Qt.ItemDataRole.UserRole)
+            author = self.session.query(Author).filter(Author.author_id == author_id).first()
+            if author:
+                self.publication.authors.remove(author)  # Убираем из связи
+                self.authors_list.takeItem(self.authors_list.row(item))
+                self.available_authors_list.addItem(item)
 
     def load_available_authors(self):
         self.authors_list.clear()
