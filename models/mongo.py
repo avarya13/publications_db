@@ -66,3 +66,9 @@ class MongoDB:
     def delete_metadata(self, publication_id):
         self.collection.delete_one({"publication_id": publication_id})
 
+    def update_metadata(self, publication_id, mongo_data):
+        self.collection.update_one(
+            {'publication_id': publication_id},  
+            {'$set': mongo_data},               
+            upsert=True                         
+        )
