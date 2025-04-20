@@ -117,23 +117,23 @@ class AddPublicationDialog(QDialog):
         layout.addWidget(self.bibliography_input)
 
         # Цитирования
-        layout.addWidget(QLabel("Цитирования WoS:"))
+        layout.addWidget(QLabel("Цитируется WoS:"))
         self.citations_wos_input = QLineEdit()
         layout.addWidget(self.citations_wos_input)
 
-        layout.addWidget(QLabel("Цитирования RSCI:"))
+        layout.addWidget(QLabel("Цитируется RSCI:"))
         self.citations_rsci_input = QLineEdit()
         layout.addWidget(self.citations_rsci_input)
 
-        layout.addWidget(QLabel("Цитирования Scopus:"))
+        layout.addWidget(QLabel("Цитируется Scopus:"))
         self.citations_scopus_input = QLineEdit()
         layout.addWidget(self.citations_scopus_input)
 
-        layout.addWidget(QLabel("Цитирования RINZ:"))
+        layout.addWidget(QLabel("Цитируется RINZ:"))
         self.citations_rinz_input = QLineEdit()
         layout.addWidget(self.citations_rinz_input)
 
-        layout.addWidget(QLabel("Цитирования ВАК:"))
+        layout.addWidget(QLabel("Цитируется ВАК:"))
         self.citations_vak_input = QLineEdit()
         layout.addWidget(self.citations_vak_input)
 
