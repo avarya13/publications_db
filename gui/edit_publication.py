@@ -8,24 +8,28 @@ from services.publication_service import create_publication, get_journals, get_a
 # from database.document import create_publication_metadata  
 from database.relational import get_session
 from models.mongo import MongoDB
-from models.relational_models import Publication, Author
+from models.relational_models import Publication, Author, Journal
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton,
     QComboBox, QListWidget, QAbstractItemView, QHBoxLayout, QMessageBox
 )
 from PyQt6.QtCore import Qt
+from models.relational_models import UserRole
 
 class EditPublicationDialog(QDialog):
-    def __init__(self, session=None, publication=None):
+    def __init__(self, session=None, publication=None, user_role=None, is_author_of_publication=False):
         super().__init__()
         self.session = session
         self.publication = publication or {}
         self.publication_id = self.publication.get('publication_id', None)
 
         self.setWindowTitle("Редактировать публикацию")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 600, 700)
 
-        # 👉 Применяем стиль
+        self.user_role = user_role
+        self.is_author_of_publication = is_author_of_publication
+
+        # Применяем стиль
         self.setStyleSheet("""
             QWidget {
                 font-size: 14px;
@@ -220,6 +224,7 @@ class EditPublicationDialog(QDialog):
 
         # Кнопка сохранения
         self.save_button = QPushButton("Сохранить изменения")
+        self.save_button.clicked.connect(self.save_changes)
         form_layout.addWidget(self.save_button)
 
         # ScrollArea
@@ -235,13 +240,17 @@ class EditPublicationDialog(QDialog):
         if self.publication_id:
             self.load_publication_data()
             self.load_available_authors()
+            self.load_journals()
+        
+        # Конфигурируем доступность полей в зависимости от роли
+        self.configure_ui_for_role()
 
 
-    # def load_journals(self):
-    #     # Пример запроса всех журналов из БД
-    #     journals = self.session.query(Journal).all()
-    #     for journal in journals:
-    #         self.journal_combo.addItem(journal.name, journal.id)
+    def load_journals(self):
+        # Пример запроса всех журналов из БД
+        journals = self.session.query(Journal).all()
+        for journal in journals:
+            self.journal_combo.addItem(journal.name)
 
     # def load_authors(self):
     #     authors = self.session.query(Author).all()
@@ -267,12 +276,23 @@ class EditPublicationDialog(QDialog):
         self.citations_vak_input.setText(str(self.publication.get('citations_vak', '')))
         self.patent_date_input.setText(self.publication.get('patent_date', ''))
 
-        # Выбор журнала
         journal_id = self.publication.get('journal_id')
         if journal_id:
-            index = self.journal_combo.findData(journal_id)
-            if index >= 0:
-                self.journal_combo.setCurrentIndex(index)
+            journal = self.session.query(Journal).filter(Journal.journal_id == journal_id).first()
+            if journal:
+                # Assuming your journal_combo box expects the journal's name to be displayed
+                journal_name = journal.name
+                # Now find the index of the journal in the combo box
+                index = self.journal_combo.findText(journal_name)  # Assuming findText looks for the name of the journal
+                if index >= 0:
+                    self.journal_combo.setCurrentIndex(index)
+
+        # Выбор журнала
+        # journal_id = self.publication.get('journal_id')
+        # if journal_id:
+        #     index = self.journal_combo.findData(journal_id)
+        #     if index >= 0:
+        #         self.journal_combo.setCurrentIndex(index)
 
         # Выделение авторов
         selected_author_ids = set(self.publication.get('author_ids', []))
@@ -280,6 +300,68 @@ class EditPublicationDialog(QDialog):
             item = self.authors_list.item(i)
             if item.data(Qt.ItemDataRole.UserRole) in selected_author_ids:
                 item.setSelected(True)
+
+    def configure_ui_for_role(self):
+        """Настройка доступности элементов интерфейса в зависимости от роли"""
+        if self.user_role == UserRole.GUEST:
+            self.set_read_only()
+        elif self.user_role == UserRole.AUTHOR:
+            if self.is_author_of_publication:
+                print('PARTLY EDITABLE')
+                self.set_editable_except_authors()
+            else:
+                self.set_read_only()
+        elif self.user_role == UserRole.ADMIN:
+            print('FULLY EDITABLE')
+            self.set_fully_editable()
+
+    def set_read_only(self):
+        """Отключаем все поля"""
+        self.title_input.setReadOnly(True)
+        self.year_input.setReadOnly(True)
+        self.journal_combo.setDisabled(True)
+        self.abstract_input.setReadOnly(True)
+        self.keyword_input.setReadOnly(True)
+        self.projects_input.setReadOnly(True)
+        self.status_input.setReadOnly(True)
+        self.type_input.setReadOnly(True)
+        self.doi_input.setReadOnly(True)
+        self.bibliography_input.setReadOnly(True)
+        self.citations_wos_input.setReadOnly(True)
+        self.citations_rsci_input.setReadOnly(True)
+        self.citations_scopus_input.setReadOnly(True)
+        self.citations_rinz_input.setReadOnly(True)
+        self.citations_vak_input.setReadOnly(True)
+        self.patent_date_input.setReadOnly(True)
+        self.btn_add_to_publication.setDisabled(True)
+        self.btn_remove_from_publication.setDisabled(True)
+
+    def set_editable_except_authors(self):
+        """Отключаем редактирование списка авторов для авторов публикации"""
+        # self.set_read_only()
+        self.authors_list.setDisabled(False)
+        self.available_authors_list.setDisabled(False)
+
+    def set_fully_editable(self):
+        """Даем доступ ко всем полям для администраторов"""
+        self.title_input.setReadOnly(False)
+        self.year_input.setReadOnly(False)
+        self.journal_combo.setDisabled(False)
+        self.abstract_input.setReadOnly(False)
+        self.keyword_input.setReadOnly(False)
+        self.projects_input.setReadOnly(False)
+        self.status_input.setReadOnly(False)
+        self.type_input.setReadOnly(False)
+        self.doi_input.setReadOnly(False)
+        self.bibliography_input.setReadOnly(False)
+        self.citations_wos_input.setReadOnly(False)
+        self.citations_rsci_input.setReadOnly(False)
+        self.citations_scopus_input.setReadOnly(False)
+        self.citations_rinz_input.setReadOnly(False)
+        self.citations_vak_input.setReadOnly(False)
+        self.patent_date_input.setReadOnly(False)
+        self.btn_add_to_publication.setDisabled(False)
+        self.btn_remove_from_publication.setDisabled(False)
 
     def save_changes(self):
         # Получение новых данных
@@ -333,6 +415,7 @@ class EditPublicationDialog(QDialog):
             self.accept()
         except Exception as e:
             self.session.rollback()
+            print(f"Не удалось сохранить изменения: {e}")
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить изменения: {e}")
 
     def load_journals(self):
@@ -340,8 +423,9 @@ class EditPublicationDialog(QDialog):
         self.journal_combo.clear()
         journals = get_journals(self.session)
         for journal in journals:
+            print('JOURNAL', journal)
             self.journal_combo.addItem(f"{journal.name} ({journal.issn})", userData=journal.journal_id)
-
+ 
     # def load_authors(self):
     #     """Загружает список авторов из БД"""
     #     self.authors_list.clear()
