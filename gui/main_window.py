@@ -25,7 +25,7 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.is_admin = False
+        self.is_author = False 
 
         init_db()
 
@@ -301,29 +301,29 @@ class MainWindow(QWidget):
     def configure_ui_for_role(self):
         """Конфигурирует элементы интерфейса в зависимости от роли пользователя"""
         try:
-            role = self.session_manager.get_user_role()
-            print(f"Текущая роль: {role}")
+            self.role = self.session_manager.get_user_role()
+            print(f"Текущая роль: {self.role}")
 
             user = self.session_manager.get_current_user()
             print(f"Текущий пользователь: {user.username}")
 
         except Exception as e:
             print(f"Ошибка получения роли пользователя: {e}")
-            role = None
+            self.role = None
 
-        if role == UserRole.GUEST:
+        if self.role == UserRole.GUEST:
             # Ограниченные права для гостей
             self.delete_button.setEnabled(False)
             self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
             self.configure_other_tabs()  
-        elif role == UserRole.AUTHOR:
+        elif self.role == UserRole.AUTHOR:
             # Права автора
             self.delete_button.setEnabled(False)
-            self.add_button.setEnabled(True)
+            self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
             self.configure_other_tabs()  
-        elif role == UserRole.ADMIN:
+        elif self.role == UserRole.ADMIN:
             # Права администратора
             self.delete_button.setEnabled(True)
             self.add_button.setEnabled(True)
@@ -349,9 +349,9 @@ class MainWindow(QWidget):
         
     def show_profile_menu(self):
         """Показывает меню профиля или окно входа"""
-        role = self.session_manager.get_user_role()
+        self.role = self.session_manager.get_user_role()
         print('show_profile_menu', role)
-        if role == UserRole.GUEST:
+        if self.role == UserRole.GUEST:
             # Если пользователь гость, то откроем окно входа
             self.login_user()
         else:
@@ -419,15 +419,17 @@ class MainWindow(QWidget):
             # Проверяем, есть ли текущий пользователь в списке авторов
             is_author = any(author.author_id == current_user.author_id for author in publication.authors)
             if is_author:
-                self.edit_button.setEnabled(True)  
+                self.edit_button.setEnabled(True) 
+                self.is_author = True 
             else:
-                self.edit_button.setEnabled(False)  
+                self.edit_button.setEnabled(False) 
+                self.is_author = False  
         elif current_user.role == UserRole.ADMIN:
             self.edit_button.setEnabled(True)  
+            self.is_author = True 
         else:
+            self.is_author = False  
             self.edit_button.setEnabled(False)  # Блокируем кнопку, если пользователь не автор
-
-    
 
     def delete_publication(self):
         """Удаляет выбранную публикацию (только для администратора)"""
@@ -601,7 +603,7 @@ class MainWindow(QWidget):
             return
 
         publication = self.publications_data[index]
-        dialog = EditPublicationDialog(session=self.session, publication=publication)
+        dialog = EditPublicationDialog(session=self.session, publication=publication, user_role=self.role, is_author_of_publication=self.is_author)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             clear_publication_cache()
