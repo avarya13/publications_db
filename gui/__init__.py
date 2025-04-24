@@ -1,6 +1,6 @@
 from .main_window import MainWindow
 from .add_publication import AddPublicationDialog
-from .add_user import AddUserDialog
+# from .add_user import AddUserDialog
 from .login import LoginDialog  # Импорт окна входа
 from .register import RegisterDialog  # Импорт окна регистрации
 from .edit_profile import EditProfileDialog

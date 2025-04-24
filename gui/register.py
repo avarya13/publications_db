@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton, QMessageBox
 from werkzeug.security import generate_password_hash
-from models.relational_models import User, UserRole, Role, Permissions
+from models.relational_models import User, UserRole, Permissions
 from database.relational import SessionLocal
 
 class RegisterDialog(QDialog):

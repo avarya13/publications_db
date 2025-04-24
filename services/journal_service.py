@@ -27,7 +27,11 @@ def get_all_journals(session, sort_by="name", descending=False):
         "name": j.name,
         "type": j.type,
         "issn": j.issn,
-        "isbn": j.isbn
+        "isbn": j.isbn,
+        "publisher": j.publisher,
+        "quartile": j.quartile,
+        "impact_factor": j.impact_factor,
+        "website": j.website
         } for j in journals]
     redis_client.setex(key, 300, json.dumps(data))  # TTL 5 минут
     return data
@@ -72,6 +76,10 @@ class JournalDetailsDialog(QDialog):
         layout.addWidget(safe_label("Название", journal.get('name')))
         layout.addWidget(safe_label("ISSN", journal.get('issn')))
         layout.addWidget(safe_label("ISBN", journal.get('isbn')))
+        layout.addWidget(safe_label("Издательство", journal.get('publisher')))
+        layout.addWidget(safe_label("Квартиль", journal.get('quartile')))
+        layout.addWidget(safe_label("Impact Factor", journal.get('impact_factor')))
+        layout.addWidget(safe_label("Сайт", journal.get('website')))
 
         self.setLayout(layout)
 
@@ -371,6 +379,16 @@ class AddJournalDialog(QDialog):
         form_layout.addRow("ISSN", self.issn_line_edit)
         form_layout.addRow("ISBN", self.isbn_line_edit)
 
+        self.publisher_line_edit = QLineEdit(self)
+        self.quartile_line_edit = QLineEdit(self)
+        self.impact_factor_line_edit = QLineEdit(self)
+        self.website_line_edit = QLineEdit(self)
+
+        form_layout.addRow("Издательство", self.publisher_line_edit)
+        form_layout.addRow("Квартиль (Q1-Q4)", self.quartile_line_edit)
+        form_layout.addRow("Impact Factor", self.impact_factor_line_edit)
+        form_layout.addRow("Сайт журнала", self.website_line_edit)
+
         layout.addLayout(form_layout)
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -385,13 +403,27 @@ class AddJournalDialog(QDialog):
         type_ = self.type_line_edit.text()
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
+        publisher = self.publisher_line_edit.text()
+        quartile = self.quartile_line_edit.text()
+        impact_factor = self.impact_factor_line_edit.text()
+        website = self.website_line_edit.text()
 
         if not name:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
             return
 
         try:
-            new_journal = Journal(name=name, type=type_, issn=issn, isbn=isbn)
+            new_journal = Journal(
+                name=name, 
+                type=type_, 
+                issn=issn, 
+                isbn=isbn, 
+                publisher=publisher,
+                quartile=quartile,
+                impact_factor=impact_factor,
+                website=website
+                )
+            
             self.session.add(new_journal)
             self.session.commit()
             super().accept()
@@ -439,17 +471,29 @@ class EditJournalDialog(QDialog):
         self.type_line_edit = QLineEdit(self)
         self.issn_line_edit = QLineEdit(self)
         self.isbn_line_edit = QLineEdit(self)
+        self.publisher_line_edit = QLineEdit(self)
+        self.quartile_line_edit = QLineEdit(self)
+        self.impact_factor_line_edit = QLineEdit(self)
+        self.website_line_edit = QLineEdit(self)
 
         self.name_line_edit.setText(journal['name'])
         self.type_line_edit.setText(journal['type'])
         self.issn_line_edit.setText(journal['issn'])
         self.isbn_line_edit.setText(journal['isbn'])
+        self.publisher_line_edit.setText(journal['publisher'])
+        self.quartile_line_edit.setText(journal['quartile'])
+        self.impact_factor_line_edit.setText(journal['impact_factor'])
+        self.website_line_edit.setText(journal['website'])
 
         form_layout.addRow("Название", self.name_line_edit)
         form_layout.addRow("Тип", self.type_line_edit)
         form_layout.addRow("ISSN", self.issn_line_edit)
         form_layout.addRow("ISBN", self.isbn_line_edit)
-
+        form_layout.addRow("Издательство", self.publisher_line_edit)
+        form_layout.addRow("Квартиль", self.quartile_line_edit)
+        form_layout.addRow("Impact Factor", self.impact_factor_line_edit)
+        form_layout.addRow("Сайт", self.website_line_edit)
+        
         layout.addLayout(form_layout)
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -464,6 +508,10 @@ class EditJournalDialog(QDialog):
         type_ = self.type_line_edit.text()
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
+        publisher = self.publisher_line_edit.text()
+        quartile = self.quartile_line_edit.text()
+        impact_factor = self.impact_factor_line_edit.text()
+        website = self.website_line_edit.text()
 
         if not name:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
@@ -479,6 +527,10 @@ class EditJournalDialog(QDialog):
             journal_obj.type = type_
             journal_obj.issn = issn
             journal_obj.isbn = isbn
+            journal_obj.publisher = publisher
+            journal_obj.quartile = quartile
+            journal_obj.impact_factor = impact_factor
+            journal_obj.website = website
 
             self.session.commit()
             super().accept()

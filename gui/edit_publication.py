@@ -8,7 +8,7 @@ from services.publication_service import create_publication, get_journals, get_a
 # from database.document import create_publication_metadata  
 from database.relational import get_session
 from models.mongo import MongoDB
-from models.relational_models import Publication, Author, Journal, Keyword
+from models.relational_models import Publication, Author, Journal, Keyword, PublicationAuthor
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton,
     QComboBox, QListWidget, QAbstractItemView, QHBoxLayout, QMessageBox
@@ -139,6 +139,18 @@ class EditPublicationDialog(QDialog):
         self.journal_combo = QComboBox()
         form_layout.addWidget(self.journal_combo)
 
+        form_layout.addWidget(QLabel("Том:"))
+        self.volume_input = QLineEdit()
+        form_layout.addWidget(self.volume_input)
+        
+        form_layout.addWidget(QLabel("Номер:"))
+        self.issue_input = QLineEdit()
+        form_layout.addWidget(self.issue_input)
+        
+        form_layout.addWidget(QLabel("Страницы:"))
+        self.pages_input = QLineEdit()
+        form_layout.addWidget(self.pages_input)
+
         # Текущие авторы
         form_layout.addWidget(QLabel("Текущие авторы публикации:"))
         self.authors_list = QListWidget()
@@ -242,6 +254,9 @@ class EditPublicationDialog(QDialog):
         # Кнопка сохранения
         self.save_button = QPushButton("Сохранить изменения")
         self.save_button.clicked.connect(self.save_changes)
+        self.btn_add_to_publication.clicked.connect(self.add_author_to_publication)
+        self.btn_remove_from_publication.clicked.connect(self.remove_author_from_publication)
+
         form_layout.addWidget(self.save_button)
 
         # ScrollArea
@@ -295,6 +310,9 @@ class EditPublicationDialog(QDialog):
         self.citations_vak_input.setText(str(self.publication.get('citations_vak', '')))
         self.patent_date_input.setText(self.publication.get('patent_date', ''))
         self.language_input.setText(self.publication.get('language', ''))
+        self.volume_input.setText(self.publication.get('volume', ''))
+        self.issue_input.setText(self.publication.get('issue', ''))
+        self.pages_input.setText(self.publication.get('pages', ''))
 
         journal_id = self.publication.get('journal_id')
         if journal_id:
@@ -306,13 +324,6 @@ class EditPublicationDialog(QDialog):
                 index = self.journal_combo.findText(journal_name)  # Assuming findText looks for the name of the journal
                 if index >= 0:
                     self.journal_combo.setCurrentIndex(index)
-
-        # Выбор журнала
-        # journal_id = self.publication.get('journal_id')
-        # if journal_id:
-        #     index = self.journal_combo.findData(journal_id)
-        #     if index >= 0:
-        #         self.journal_combo.setCurrentIndex(index)
 
         # Выделение авторов
         selected_author_ids = set(self.publication.get('author_ids', []))
@@ -388,10 +399,33 @@ class EditPublicationDialog(QDialog):
         self.citation_input.setReadOnly(True)
 
     def set_editable_except_authors(self):
-        """Отключаем редактирование списка авторов для авторов публикации"""
-        # self.set_read_only()
-        self.authors_list.setDisabled(False)
-        self.available_authors_list.setDisabled(False)
+        """Включаем редактирование всех полей, кроме списка авторов"""
+        # Сделать все поля редактируемыми:
+        self.title_input.setReadOnly(False)
+        self.year_input.setReadOnly(False)
+        self.journal_combo.setDisabled(False)
+        self.abstract_input.setReadOnly(False)
+        self.keyword_input.setReadOnly(False)
+        self.projects_input.setReadOnly(False)
+        self.status_input.setReadOnly(False)
+        self.type_input.setReadOnly(False)
+        self.doi_input.setReadOnly(False)
+        self.bibliography_input.setReadOnly(False)
+        self.citations_wos_input.setReadOnly(False)
+        self.citations_rsci_input.setReadOnly(False)
+        self.citations_scopus_input.setReadOnly(False)
+        self.citations_rinz_input.setReadOnly(False)
+        self.citations_vak_input.setReadOnly(False)
+        self.patent_date_input.setReadOnly(False)
+        self.btn_add_to_publication.setDisabled(True)  
+        self.btn_remove_from_publication.setDisabled(True) 
+        self.link_input.setReadOnly(False)
+        self.language_input.setReadOnly(False)
+        self.citation_input.setReadOnly(False)
+
+        # Запрет на редактирование списка авторов:
+        self.authors_list.setDisabled(True)
+        self.available_authors_list.setDisabled(True)
 
     def set_fully_editable(self):
         """Даем доступ ко всем полям для администраторов"""
@@ -441,6 +475,9 @@ class EditPublicationDialog(QDialog):
             }
             patent_date = self.patent_date_input.text()
             journal_id = self.journal_combo.currentData()
+            volume = self.volume_input.text()
+            issue = self.issue_input.text()
+            pages = self.pages_input.text()
             
             # Get selected authors
             selected_authors = [
@@ -457,6 +494,10 @@ class EditPublicationDialog(QDialog):
             publication.title = title
             publication.year = int(year) if year else None
             publication.journal_id = journal_id
+
+            publication.volume = volume
+            publication.issue = issue
+            publication.pages = pages
 
             # Update authors relationship
             publication.authors = self.session.query(Author).filter(
@@ -549,6 +590,7 @@ class EditPublicationDialog(QDialog):
 
     def load_authors(self):
         """Загружает текущих и доступных авторов"""
+        # clear_publication_cache()
         self.authors_list.clear()
         self.available_authors_list.clear()
 
@@ -576,25 +618,58 @@ class EditPublicationDialog(QDialog):
     #         self.authors_list.takeItem(self.authors_list.row(item))
     #         self.available_authors_list.addItem(item)
 
+    # def add_author_to_publication(self):
+    #     for item in self.available_authors_list.selectedItems():
+    #         author_id = item.data(Qt.ItemDataRole.UserRole)
+    #         author = self.session.query(Author).filter(Author.author_id == author_id).first()
+    #         if author:
+    #             self.publication['authors'].append(author)
+    #             self.available_authors_list.takeItem(self.available_authors_list.row(item))
+    #             self.authors_list.addItem(item)
+
     def add_author_to_publication(self):
+        publication_id = self.publication['publication_id']
+        publication_obj = self.session.query(Publication).get(publication_id)
+
         for item in self.available_authors_list.selectedItems():
-            # Переносим автора из доступных в текущие
             author_id = item.data(Qt.ItemDataRole.UserRole)
-            author = self.session.query(Author).filter(Author.author_id == author_id).first()
-            if author:
-                self.publication.authors.append(author)  # Добавляем в связь
+
+            # Проверка: если автор уже есть — пропускаем
+            if not any(pa.author_id == author_id for pa in publication_obj.publication_authors):
+                db_link = PublicationAuthor(
+                    publication=publication_obj,
+                    author_id=author_id
+                )
+                self.session.add(db_link)
+
+                # Визуальное перемещение
                 self.available_authors_list.takeItem(self.available_authors_list.row(item))
                 self.authors_list.addItem(item)
 
+        self.session.commit()
+
+
     def remove_author_from_publication(self):
+        publication_id = self.publication['publication_id']
+        publication_obj = self.session.query(Publication).get(publication_id)
+
         for item in self.authors_list.selectedItems():
-            # Переносим автора из текущих в доступные
             author_id = item.data(Qt.ItemDataRole.UserRole)
-            author = self.session.query(Author).filter(Author.author_id == author_id).first()
-            if author:
-                self.publication.authors.remove(author)  # Убираем из связи
-                self.authors_list.takeItem(self.authors_list.row(item))
-                self.available_authors_list.addItem(item)
+
+            # Найдём связку и удалим из базы
+            link = self.session.query(PublicationAuthor).filter_by(
+                publication_id=publication_id,
+                author_id=author_id
+            ).first()
+            if link:
+                self.session.delete(link)
+
+            # Визуальное перемещение
+            self.authors_list.takeItem(self.authors_list.row(item))
+            self.available_authors_list.addItem(item)
+
+        self.session.commit()
+
 
     def load_available_authors(self):
         self.authors_list.clear()

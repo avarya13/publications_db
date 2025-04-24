@@ -74,6 +74,9 @@ class PublicationDetailsDialog(QDialog):
         add_labeled_text("Название", publication.get('title', '-'))
         add_labeled_text("Год", str(publication.get('year', '-')))
         add_labeled_text("Журнал", publication.get('journal', '-'))
+        add_labeled_text("Том", publication.get('volume', '-'))
+        add_labeled_text("Выпуск", publication.get('issue', '-'))
+        add_labeled_text("Страницы", publication.get('pages', '-'))
 
         print('PUB', publication)
 
@@ -121,6 +124,7 @@ class PublicationDetailsDialog(QDialog):
                 ("Статус публикации", "publication_status"),
                 ("Тип публикации", "publication_type"),
                 ("DOI", "doi"),
+                ("Цитирование", "citations"),
                 ("Цитирование (WoS)", "citations_wos"),
                 ("Цитирование (RSCI)", "citations_rsci"),
                 ("Цитирование (Scopus)", "citations_scopus"),

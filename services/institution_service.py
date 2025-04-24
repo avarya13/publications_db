@@ -24,7 +24,11 @@ def get_all_institutions(session, sort_by="name", descending=False):
         "country": i.country,
         "city": i.city,
         "street": i.street,
-        "house": i.house
+        "house": i.house,
+        "full_name": i.full_name,
+        "region": i.region,
+        "postal_code": i.postal_code,
+        "website": i.website
     } for i in institutions]
     
     redis_client.setex(key, 300, json.dumps(data))  
@@ -70,12 +74,15 @@ class InstitutionDetailsDialog(QDialog):
         def safe_label(text, value):
             return QLabel(f"{text}: {value if value else '—'}")
 
-        layout.addWidget(safe_label("Название", institution['name']))
+        layout.addWidget(safe_label("Полное название", institution.get('full_name')))
+        layout.addWidget(safe_label("Сокращенное название", institution['name']))
         layout.addWidget(safe_label("Страна", institution['country']))
+        layout.addWidget(safe_label("Регион", institution.get('region')))
         layout.addWidget(safe_label("Город", institution['city']))
         layout.addWidget(safe_label("Улица", institution['street']))
         layout.addWidget(safe_label("Дом", institution['house']))
-
+        layout.addWidget(safe_label("Почтовый индекс", institution.get('postal_code')))
+        layout.addWidget(safe_label("Сайт", institution.get('website')))
         self.setLayout(layout)
 
 class AddInstitutionDialog(QDialog):
@@ -112,17 +119,25 @@ class AddInstitutionDialog(QDialog):
 
         layout = QFormLayout()
 
+        self.full_name_input = QLineEdit(self)
         self.name_input = QLineEdit(self)
         self.country_input = QLineEdit(self)
+        self.region_input = QLineEdit(self)
         self.city_input = QLineEdit(self)
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
+        self.postal_code_input = QLineEdit(self)
+        self.website_input = QLineEdit(self)
 
-        layout.addRow("Название:", self.name_input)
-        layout.addRow("Страна:", self.country_input)
+        layout.addRow("Полное название:", self.full_name_input)
+        layout.addRow("Сокращенное название:", self.name_input)
+        layout.addRow("Страна:", self.country_input)        
+        layout.addRow("Регион:", self.region_input)
         layout.addRow("Город:", self.city_input)
         layout.addRow("Улица:", self.street_input)
         layout.addRow("Дом:", self.house_input)
+        layout.addRow("Почтовый индекс:", self.postal_code_input)
+        layout.addRow("Сайт:", self.website_input)
 
         self.add_button = QPushButton("Добавить", self)
         self.add_button.clicked.connect(self.add_institution)
@@ -137,6 +152,10 @@ class AddInstitutionDialog(QDialog):
         country = self.country_input.text().strip()
         street = self.street_input.text().strip()
         house = self.house_input.text().strip()
+        full_name = self.full_name_input.text().strip()
+        region = self.region_input.text().strip()
+        postal_code = self.postal_code_input.text().strip()
+        website = self.website_input.text().strip()
 
         if not name or not city or not country or not street or not house:
             QMessageBox.warning(self, "Ошибка", "Все поля должны быть заполнены.")
@@ -144,7 +163,15 @@ class AddInstitutionDialog(QDialog):
 
         try:
             new_institution = Institution(
-                name=name, city=city, country=country, street=street, house=int(house)
+                name=name,
+                full_name=full_name,
+                city=city,
+                country=country,
+                region=region,
+                street=street,
+                house=int(house),
+                postal_code=postal_code,
+                website=website
             )
             self.session.add(new_institution)
             self.session.commit()
@@ -188,23 +215,35 @@ class EditInstitutionDialog(QDialog):
 
         layout = QFormLayout()
 
+        self.full_name_input = QLineEdit(self)
         self.name_input = QLineEdit(self)
         self.country_input = QLineEdit(self)
+        self.region_input = QLineEdit(self)
         self.city_input = QLineEdit(self)
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
+        self.postal_code_input = QLineEdit(self)
+        self.website_input = QLineEdit(self)
 
         self.name_input.setText(institution['name'])
         self.country_input.setText(institution['country'])
         self.city_input.setText(institution['city'])
         self.street_input.setText(institution['street'])
         self.house_input.setText(str(institution['house']))
+        self.full_name_input.setText(institution.get('full_name', ''))
+        self.region_input.setText(institution.get('region', ''))
+        self.postal_code_input.setText(institution.get('postal_code', ''))
+        self.website_input.setText(institution.get('website', ''))
 
-        layout.addRow("Название:", self.name_input)
+        layout.addRow("Полное название:", self.full_name_input)
+        layout.addRow("Сокращенное название:", self.name_input)
         layout.addRow("Страна:", self.country_input)
+        layout.addRow("Регион:", self.region_input)
         layout.addRow("Город:", self.city_input)
         layout.addRow("Улица:", self.street_input)
         layout.addRow("Дом:", self.house_input)
+        layout.addRow("Почтовый индекс:", self.postal_code_input)
+        layout.addRow("Сайт:", self.website_input)
 
         self.save_button = QPushButton("Сохранить", self)
         self.save_button.clicked.connect(self.save_institution)
@@ -220,6 +259,10 @@ class EditInstitutionDialog(QDialog):
         country = self.country_input.text().strip()
         street = self.street_input.text().strip()
         house_text = self.house_input.text().strip()
+        full_name = self.full_name_input.text().strip()
+        region = self.region_input.text().strip()
+        postal_code = self.postal_code_input.text().strip()
+        website = self.website_input.text().strip()
 
         if not name or not city or not country or not street or not house_text:
             QMessageBox.warning(self, "Ошибка", "Все поля должны быть заполнены.")
@@ -244,6 +287,10 @@ class EditInstitutionDialog(QDialog):
             institution_obj.country = country
             institution_obj.street = street
             institution_obj.house = house
+            institution_obj.full_name = full_name or None
+            institution_obj.region = region or None
+            institution_obj.postal_code = postal_code or None
+            institution_obj.website = website or None
 
             # Сохраним изменения
             self.session.commit()

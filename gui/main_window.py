@@ -350,7 +350,7 @@ class MainWindow(QWidget):
     def show_profile_menu(self):
         """Показывает меню профиля или окно входа"""
         self.role = self.session_manager.get_user_role()
-        print('show_profile_menu', role)
+        # print('show_profile_menu', role)
         if self.role == UserRole.GUEST:
             # Если пользователь гость, то откроем окно входа
             self.login_user()
@@ -417,7 +417,9 @@ class MainWindow(QWidget):
         # Проверяем, является ли текущий пользователь автором выбранной публикации
         if current_user.role == UserRole.AUTHOR:
             # Проверяем, есть ли текущий пользователь в списке авторов
-            is_author = any(author.author_id == current_user.author_id for author in publication.authors)
+            is_author = current_user.author and any(author.author_id == current_user.author.author_id for author in publication.authors)
+
+            # is_author = any(author.author_id == current_user.author_id for author in publication.authors)
             if is_author:
                 self.edit_button.setEnabled(True) 
                 self.is_author = True 

@@ -45,10 +45,15 @@ def get_all_authors(session, sort_by="last_name", sort_order="asc"):
     data = [{
         "author_id": a.author_id,
         "first_name": a.first_name,
+        "mid_name": a.mid_name,
         "last_name": a.last_name,
         "full_name": a.full_name,
         "full_name_eng": a.full_name_eng,
         "email": a.email,
+        "academic_degree": a.academic_degree,
+        "position": a.position,
+        "scopus_id": a.scopus_id,
+        "h_index": a.h_index,
         "orcid": a.orcid
     } for a in authors]
 
@@ -98,11 +103,16 @@ class AuthorDetailsDialog(QDialog):
             return label
 
         layout.addWidget(safe_label("Имя", author['first_name']))
+        layout.addWidget(safe_label("Отчество", author['mid_name']))
         layout.addWidget(safe_label("Фамилия", author['last_name']))
         layout.addWidget(safe_label("Полное имя", author['full_name']))
         layout.addWidget(safe_label("Полное имя (англ.)", author['full_name_eng']))
         layout.addWidget(safe_label("Email", author['email']))
+        layout.addWidget(safe_label("Ученая степень", author['academic_degree']))
+        layout.addWidget(safe_label("Должность", author['position']))
         layout.addWidget(safe_label("ORCID", author['orcid']))
+        layout.addWidget(safe_label("Scopus ID", author['scopus_id']))
+        layout.addWidget(safe_label("Индекс Хирша", author['h_index']))
 
         self.setLayout(layout)
 
@@ -257,10 +267,11 @@ class AuthorsTab(QWidget):
                     self.current_user = self.session_manager.get_current_user()
 
                     print(self.current_user)
-                    print('on_author_selected', self.current_user.author_id, selected_author.author_id)
+                    # print('on_author_selected', self.current_user.author_id, selected_author.author_id)
 
                     # Проверяем, совпадает ли автор из таблицы с текущим пользователем
-                    if selected_author.author_id == self.current_user.author_id:
+                    # if selected_author.author_id == self.current_user.author_id:
+                    if selected_author.author_id == self.current_user.author.author_id:
                         self.edit_button.setEnabled(True)
                     else:
                         self.edit_button.setEnabled(False)
@@ -440,6 +451,12 @@ class AddAuthorDialog(QDialog):
         self.first_name_input.setPlaceholderText("Введите имя")
         layout.addWidget(self.first_name_label)
         layout.addWidget(self.first_name_input)
+        
+        self.mid_name_label = QLabel("Отчество:")
+        self.mid_name_input = QLineEdit(self)
+        self.mid_name_input.setPlaceholderText("Введите отчество")
+        layout.addWidget(self.mid_name_label)
+        layout.addWidget(self.mid_name_input)
 
         # Фамилия автора
         self.last_name_label = QLabel("Фамилия автора:")
@@ -469,6 +486,30 @@ class AddAuthorDialog(QDialog):
         layout.addWidget(self.orcid_label)
         layout.addWidget(self.orcid_input)
 
+        self.position_label = QLabel("Должность:")
+        self.position_input = QLineEdit(self)
+        self.position_input.setPlaceholderText("Введите должность")
+        layout.addWidget(self.position_label)
+        layout.addWidget(self.position_input)
+
+        self.academic_degree_label = QLabel("Ученая степень:")
+        self.academic_degree_input = QLineEdit(self)
+        self.academic_degree_input.setPlaceholderText("Введите ученую степень")
+        layout.addWidget(self.academic_degree_label)
+        layout.addWidget(self.academic_degree_input)
+
+        self.h_index_label = QLabel("Индекс Хирша:")
+        self.h_index_input = QLineEdit(self)
+        self.h_index_input.setPlaceholderText("Введите индекс Хирша")
+        layout.addWidget(self.h_index_label)
+        layout.addWidget(self.h_index_input)
+
+        self.scopus_id_label = QLabel("Scopus ID:")
+        self.scopus_id_input = QLineEdit(self)
+        self.scopus_id_input.setPlaceholderText("Введите Scopus ID")
+        layout.addWidget(self.scopus_id_label)
+        layout.addWidget(self.scopus_id_input)
+
         # Кнопка для добавления
         self.submit_button = QPushButton("Добавить", self)
         self.submit_button.clicked.connect(self.submit_author)
@@ -479,11 +520,16 @@ class AddAuthorDialog(QDialog):
     def submit_author(self):
         # Получаем данные из полей ввода
         first_name = self.first_name_input.text().strip()
+        mid_name = self.mid_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
         full_name = self.full_name_input.text().strip()
         full_name_eng = self.full_name_eng_input.text().strip() or None  
         email = self.email_input.text().strip()
         orcid = self.orcid_input.text().strip()
+        position = self.position_input.text().strip()
+        academic_degree = self.academic_degree_input.text().strip()
+        h_index = self.h_index_input.text().strip()
+        scopus_id = self.scopus_id_input.text().strip()
 
         # Проверяем, что обязательные поля заполнены
         if not full_name:
@@ -493,11 +539,16 @@ class AddAuthorDialog(QDialog):
         # Создаем автора 
         author = Author(
             first_name=first_name,
+            mid_name=mid_name or None,
             last_name=last_name,
             full_name=full_name,
             full_name_eng=full_name_eng,
             email=email,
-            orcid=orcid
+            orcid=orcid,
+            position=position or None,
+            academic_degree=academic_degree or None,
+            h_index=int(h_index) if h_index else None,
+            scopus_id=scopus_id or None,
         )
 
         # Сохраняем автора в базе данных 
@@ -552,11 +603,16 @@ class EditAuthorDialog(QDialog):
 
         self.full_name_input = add_labeled_input("Полное имя*", author['full_name'])
         self.first_name_input = add_labeled_input("Имя автора", author['first_name'])
+        self.mid_name_input = add_labeled_input("Отчество", author.get('mid_name'))
         self.last_name_input = add_labeled_input("Фамилия автора", author['last_name'])
         self.full_name_eng_input = add_labeled_input("Полное имя (англ.)", author['full_name_eng'])
         self.email_input = add_labeled_input("Email автора", author['email'])
         self.orcid_input = add_labeled_input("ORCID автора", author['orcid'])
-
+        self.position_input = add_labeled_input("Должность", author.get('position'))
+        self.academic_degree_input = add_labeled_input("Ученая степень", author.get('academic_degree'))
+        self.h_index_input = add_labeled_input("Индекс Хирша", str(author.get('h_index', '')))
+        self.scopus_id_input = add_labeled_input("Scopus ID", author.get('scopus_id'))
+    
         self.submit_button = QPushButton("Сохранить", self)
         self.submit_button.clicked.connect(self.submit_edit)
         layout.addWidget(self.submit_button)
@@ -571,11 +627,16 @@ class EditAuthorDialog(QDialog):
                 return
 
             author_obj.first_name = self.first_name_input.text()
+            author_obj.mid_name = self.mid_name_input.text() or None
             author_obj.last_name = self.last_name_input.text()
             author_obj.full_name = self.full_name_input.text()
             author_obj.full_name_eng = self.full_name_eng_input.text()
             author_obj.email = self.email_input.text()
             author_obj.orcid = self.orcid_input.text()
+            author_obj.position = self.position_input.text() or None
+            author_obj.academic_degree = self.academic_degree_input.text() or None
+            author_obj.h_index = int(self.h_index_input.text()) if self.h_index_input.text() else None
+            author_obj.scopus_id = self.scopus_id_input.text() or None
 
             self.session.commit()
             self.accept()

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from database.relational import SessionLocal
-from models.relational_models import User, Role
+from models.relational_models import User
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Настройка подключения
@@ -10,18 +10,18 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-def create_user(username, password, role_name):
-    hashed_password = generate_password_hash(password)
+# def create_user(username, password, role_name):
+#     hashed_password = generate_password_hash(password)
     
-    # Находим роль по имени
-    role = session.query(Role).filter_by(role_name=role_name).first()
+#     # Находим роль по имени
+#     role = session.query(Role).filter_by(role_name=role_name).first()
 
-    if role:
-        user = User(username=username, password_hash=hashed_password, role=role)
-        session.add(user)
-        session.commit()
-    else:
-        raise ValueError(f"Роль {role_name} не существует")
+#     if role:
+#         user = User(username=username, password_hash=hashed_password, role=role)
+#         session.add(user)
+#         session.commit()
+#     else:
+#         raise ValueError(f"Роль {role_name} не существует")
 
 def check_user_credentials(username, password):
     user = session.query(User).filter_by(username=username).first()
