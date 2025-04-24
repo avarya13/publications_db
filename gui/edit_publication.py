@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QTextEdit, QWidget,
     QListWidget, QAbstractItemView, QHBoxLayout, QMessageBox, QScrollArea
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIntValidator
 
 from services.publication_service import create_publication, get_journals, get_authors, get_institutions, update_publication, get_publication_by_id
 # from database.document import create_publication_metadata  
@@ -132,6 +133,7 @@ class EditPublicationDialog(QDialog):
         # Год
         form_layout.addWidget(QLabel("Год:"))
         self.year_input = QLineEdit()
+        self.year_input.setValidator(QIntValidator(1800, 2100))
         form_layout.addWidget(self.year_input)
 
         # Журнал
@@ -337,6 +339,7 @@ class EditPublicationDialog(QDialog):
         metadata = mongo_db.get_metadata(self.publication_id)
         
         if metadata:
+            print("META", metadata)
             # Заполняем поля метаданных
             self.abstract_input.setPlainText(metadata.get("abstract", ""))
             self.projects_input.setText(metadata.get("projects", ""))

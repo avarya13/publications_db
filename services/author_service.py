@@ -218,6 +218,7 @@ class AuthorsTab(QWidget):
         self.authors_list.selectionModel().selectionChanged.connect(self.on_author_selected)
 
         # Загрузка данных
+        # self.clear_authors_cache()
         self.authors_data = []
         self.load_authors(sort_by="last_name", sort_order="asc")
 
@@ -233,7 +234,7 @@ class AuthorsTab(QWidget):
             self.delete_button.setEnabled(False)
         elif self.role == UserRole.AUTHOR:
             self.assign_button.setEnabled(False)
-            self.add_button.setEnabled(True)
+            self.add_button.setEnabled(False)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         elif self.role == UserRole.ADMIN:
@@ -523,7 +524,7 @@ class AddAuthorDialog(QDialog):
         mid_name = self.mid_name_input.text().strip()
         last_name = self.last_name_input.text().strip()
         full_name = self.full_name_input.text().strip()
-        full_name_eng = self.full_name_eng_input.text().strip() or None  
+        full_name_eng = self.full_name_eng_input.text().strip()  
         email = self.email_input.text().strip()
         orcid = self.orcid_input.text().strip()
         position = self.position_input.text().strip()
@@ -539,16 +540,16 @@ class AddAuthorDialog(QDialog):
         # Создаем автора 
         author = Author(
             first_name=first_name,
-            mid_name=mid_name or None,
+            mid_name=mid_name,
             last_name=last_name,
             full_name=full_name,
             full_name_eng=full_name_eng,
             email=email,
             orcid=orcid,
-            position=position or None,
-            academic_degree=academic_degree or None,
-            h_index=int(h_index) if h_index else None,
-            scopus_id=scopus_id or None,
+            position=position,
+            academic_degree=academic_degree,
+            h_index=h_index,
+            scopus_id=scopus_id,
         )
 
         # Сохраняем автора в базе данных 
@@ -627,16 +628,16 @@ class EditAuthorDialog(QDialog):
                 return
 
             author_obj.first_name = self.first_name_input.text()
-            author_obj.mid_name = self.mid_name_input.text() or None
+            author_obj.mid_name = self.mid_name_input.text() 
             author_obj.last_name = self.last_name_input.text()
             author_obj.full_name = self.full_name_input.text()
             author_obj.full_name_eng = self.full_name_eng_input.text()
             author_obj.email = self.email_input.text()
             author_obj.orcid = self.orcid_input.text()
-            author_obj.position = self.position_input.text() or None
-            author_obj.academic_degree = self.academic_degree_input.text() or None
-            author_obj.h_index = int(self.h_index_input.text()) if self.h_index_input.text() else None
-            author_obj.scopus_id = self.scopus_id_input.text() or None
+            author_obj.position = self.position_input.text() 
+            author_obj.academic_degree = self.academic_degree_input.text() 
+            author_obj.h_index = self.h_index_input.text()
+            author_obj.scopus_id = self.scopus_id_input.text() 
 
             self.session.commit()
             self.accept()

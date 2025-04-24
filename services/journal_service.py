@@ -1,4 +1,6 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QListWidget, QHBoxLayout, QMessageBox, QWidget, QFormLayout, QDialogButtonBox
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QComboBox, QLabel, QPushButton, QLineEdit, QListWidget, QHBoxLayout, QMessageBox, QWidget, QFormLayout, QDialogButtonBox
+from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtCore import QLocale
 from sqlalchemy.orm import sessionmaker
 from database.relational import get_session
 from models.relational_models import UserRole, Journal
@@ -380,12 +382,23 @@ class AddJournalDialog(QDialog):
         form_layout.addRow("ISBN", self.isbn_line_edit)
 
         self.publisher_line_edit = QLineEdit(self)
-        self.quartile_line_edit = QLineEdit(self)
         self.impact_factor_line_edit = QLineEdit(self)
+        validator = QDoubleValidator(0.0, 100.0, 3)
+        validator.setBottom(0.0)
+        validator.setLocale(QLocale("en_US"))  
+        self.impact_factor_line_edit.setValidator(validator)
         self.website_line_edit = QLineEdit(self)
 
         form_layout.addRow("Издательство", self.publisher_line_edit)
-        form_layout.addRow("Квартиль (Q1-Q4)", self.quartile_line_edit)
+
+        self.quartile_combobox = QComboBox(self)
+        self.quartile_combobox.addItem("Q1")
+        self.quartile_combobox.addItem("Q2")
+        self.quartile_combobox.addItem("Q3")
+        self.quartile_combobox.addItem("Q4")
+        
+        form_layout.addRow("Квартиль", self.quartile_combobox)  # Добавлено в форму
+
         form_layout.addRow("Impact Factor", self.impact_factor_line_edit)
         form_layout.addRow("Сайт журнала", self.website_line_edit)
 
@@ -404,9 +417,12 @@ class AddJournalDialog(QDialog):
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
         publisher = self.publisher_line_edit.text()
-        quartile = self.quartile_line_edit.text()
+        quartile = self.quartile_combobox.currentText() #self.quartile_line_edit.text()
         impact_factor = self.impact_factor_line_edit.text()
         website = self.website_line_edit.text()
+
+        if not impact_factor:
+            impact_factor = None
 
         if not name:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
@@ -459,6 +475,13 @@ class EditJournalDialog(QDialog):
                 padding: 4px;
             }
 
+            QComboBox {
+                padding: 6px;
+                border: 1px solid #b8b4a8;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+
             QDialogButtonBox {
                 padding-top: 10px;
             }
@@ -472,28 +495,42 @@ class EditJournalDialog(QDialog):
         self.issn_line_edit = QLineEdit(self)
         self.isbn_line_edit = QLineEdit(self)
         self.publisher_line_edit = QLineEdit(self)
-        self.quartile_line_edit = QLineEdit(self)
+        
+        # Используем QComboBox для квартиля
+        self.quartile_combobox = QComboBox(self)
+        self.quartile_combobox.addItem("Q1")
+        self.quartile_combobox.addItem("Q2")
+        self.quartile_combobox.addItem("Q3")
+        self.quartile_combobox.addItem("Q4")
+
         self.impact_factor_line_edit = QLineEdit(self)
+        validator = QDoubleValidator(0.0, 100.0, 3)
+        validator.setLocale(QLocale("en_US")) 
+        validator.setBottom(0.0)
+        self.impact_factor_line_edit.setValidator(validator)
         self.website_line_edit = QLineEdit(self)
 
+        # Устанавливаем значения из журнала
         self.name_line_edit.setText(journal['name'])
         self.type_line_edit.setText(journal['type'])
         self.issn_line_edit.setText(journal['issn'])
         self.isbn_line_edit.setText(journal['isbn'])
         self.publisher_line_edit.setText(journal['publisher'])
-        self.quartile_line_edit.setText(journal['quartile'])
         self.impact_factor_line_edit.setText(journal['impact_factor'])
         self.website_line_edit.setText(journal['website'])
+        
+        # Устанавливаем квартиль в комбобокс
+        self.quartile_combobox.setCurrentText(journal['quartile'])
 
         form_layout.addRow("Название", self.name_line_edit)
         form_layout.addRow("Тип", self.type_line_edit)
         form_layout.addRow("ISSN", self.issn_line_edit)
         form_layout.addRow("ISBN", self.isbn_line_edit)
         form_layout.addRow("Издательство", self.publisher_line_edit)
-        form_layout.addRow("Квартиль", self.quartile_line_edit)
+        form_layout.addRow("Квартиль", self.quartile_combobox)  # Добавляем комбобокс
         form_layout.addRow("Impact Factor", self.impact_factor_line_edit)
         form_layout.addRow("Сайт", self.website_line_edit)
-        
+
         layout.addLayout(form_layout)
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -509,9 +546,12 @@ class EditJournalDialog(QDialog):
         issn = self.issn_line_edit.text()
         isbn = self.isbn_line_edit.text()
         publisher = self.publisher_line_edit.text()
-        quartile = self.quartile_line_edit.text()
+        quartile = self.quartile_combobox.currentText() 
         impact_factor = self.impact_factor_line_edit.text()
         website = self.website_line_edit.text()
+
+        if not impact_factor:
+            impact_factor = None
 
         if not name:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, заполните все обязательные поля.")
@@ -528,7 +568,7 @@ class EditJournalDialog(QDialog):
             journal_obj.issn = issn
             journal_obj.isbn = isbn
             journal_obj.publisher = publisher
-            journal_obj.quartile = quartile
+            journal_obj.quartile = quartile 
             journal_obj.impact_factor = impact_factor
             journal_obj.website = website
 
@@ -537,5 +577,3 @@ class EditJournalDialog(QDialog):
 
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось обновить журнал: {e}")
-
-

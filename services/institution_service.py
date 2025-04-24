@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QListWidget, QHBoxLayout, QMessageBox, QWidget, QFormLayout
+from PyQt6.QtGui import QIntValidator
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from database.relational import get_session
@@ -126,6 +127,7 @@ class AddInstitutionDialog(QDialog):
         self.city_input = QLineEdit(self)
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
+        self.house_input.setValidator(QIntValidator(1, 1000))
         self.postal_code_input = QLineEdit(self)
         self.website_input = QLineEdit(self)
 
@@ -222,6 +224,7 @@ class EditInstitutionDialog(QDialog):
         self.city_input = QLineEdit(self)
         self.street_input = QLineEdit(self)
         self.house_input = QLineEdit(self)
+        self.house_input.setValidator(QIntValidator(1, 1000))
         self.postal_code_input = QLineEdit(self)
         self.website_input = QLineEdit(self)
 

@@ -45,7 +45,6 @@ class Journal(Base):
     name = Column(String(255))
     issn = Column(String(10))
     isbn = Column(String(20))
-    # Новые поля
     publisher = Column(String(200))
     quartile = Column(String(2))
     impact_factor = Column(Float)
@@ -64,7 +63,7 @@ class Author(Base):
     email = Column(String(50))
     orcid = Column(String(20))
     # Новые поля
-    h_index = Column(Integer)
+    h_index = Column(String(10))
     scopus_id = Column(String(20))
     position = Column(String(100))  # Должность
     academic_degree = Column(String(50))  # Ученая степень

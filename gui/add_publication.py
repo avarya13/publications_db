@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QAbstractItemView, QScrollArea,
     QComboBox, QListWidget, QHBoxLayout, QMessageBox, QWidget, QListWidgetItem, QCheckBox
 )
+from PyQt6.QtGui import QIntValidator
 from PyQt6.QtCore import Qt
 from services.publication_service import create_publication, get_journals, get_authors, get_institutions
 from models.mongo import MongoDB  
@@ -26,6 +27,7 @@ class AddPublicationDialog(QDialog):
         # Поле года (обязательное)
         self.year_input = QLineEdit(self)
         self.year_input.setPlaceholderText("Год (обязательно)")
+        self.year_input.setValidator(QIntValidator(1800, 2100))
         self.year_input.setFixedHeight(35)
         layout.addWidget(QLabel("Год:"))
         layout.addWidget(self.year_input)
@@ -341,16 +343,16 @@ class AddPublicationDialog(QDialog):
         keywords = self.keywords_input.text().strip()
         abstract = self.abstract_input.text().strip()
         citations = self.citations_input.text().strip()
-        projects=self.projects_input.text().strip(),
-        status=self.status_input.text().strip(),
-        type=self.type_input.text().strip(),
-        bibliography=self.bibliography_input.text().strip(),
-        citations_wos=self.citations_wos_input.text().strip(),
-        citations_rsci=self.citations_rsci_input.text().strip(),
-        citations_scopus=self.citations_scopus_input.text().strip(),
-        citations_rinz=self.citations_rinz_input.text().strip(),
-        citations_vak=self.citations_vak_input.text().strip(),
-        patent_date=self.patent_date_input.text().strip(),
+        projects=self.projects_input.text().strip()
+        status=self.status_input.text().strip()
+        type=self.type_input.text().strip()
+        bibliography=self.bibliography_input.text().strip()
+        citations_wos=self.citations_wos_input.text().strip()
+        citations_rsci=self.citations_rsci_input.text().strip()
+        citations_scopus=self.citations_scopus_input.text().strip()
+        citations_rinz=self.citations_rinz_input.text().strip()
+        citations_vak=self.citations_vak_input.text().strip()
+        patent_date=self.patent_date_input.text().strip()
         language=self.language_combo.currentText()
 
         # Проверка обязательных полей

@@ -45,13 +45,11 @@ class EditProfileDialog(QDialog):
 
         # Save Button
         self.save_button = QPushButton("Сохранить", self)
-        self.save_button.setStyleSheet("background-color: #4CAF50; color: white; border-radius: 5px; padding: 10px;")
         self.save_button.clicked.connect(self.save_changes)
         button_layout.addWidget(self.save_button)
 
         # Cancel Button
         self.cancel_button = QPushButton("Отмена", self)
-        self.cancel_button.setStyleSheet("background-color: #f44336; color: white; border-radius: 5px; padding: 10px;")
         self.cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_button)
 
