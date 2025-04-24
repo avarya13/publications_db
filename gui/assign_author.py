@@ -20,7 +20,9 @@ class AssignAuthorDialog(QDialog):
         # Выпадающий список для выбора пользователей
         self.user_combo = QComboBox(self)
         self.user_combo.addItem("Выберите пользователя", None)  # Явно указываем None как userData
-        users = self.session.query(User).filter(User.author_id == None, User.role != 'GUEST').all()  # Только свободные пользователи
+        # users = self.session.query(User).filter(User.author_id == None, User.role != 'GUEST').all() 
+        users = self.session.query(User).filter(User.author == None, User.role != 'GUEST').all()
+
         for user in users:
             self.user_combo.addItem(user.username, user.user_id)
         layout.addWidget(self.user_combo)
