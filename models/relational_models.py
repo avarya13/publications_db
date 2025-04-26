@@ -1,8 +1,13 @@
-from sqlalchemy import create_engine, Column, Float, Integer, String, Text, ForeignKey, Date, Numeric, Enum as SqlEnum
+from sqlalchemy import Column, Float, Integer, String, Text, ForeignKey,  Enum as SqlEnum
 from sqlalchemy.ext.declarative import declarative_base
 from .mongo import MongoDB
 from enum import Enum as PyEnum
 from sqlalchemy.orm import relationship
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 Base = declarative_base()
 
@@ -20,18 +25,6 @@ class User(Base):
     role = Column(SqlEnum(UserRole), default=UserRole.GUEST)
 
     author = relationship("Author", back_populates="user", uselist=False)
-
-
-# class User(Base):
-#     __tablename__ = 'users'
-    
-#     user_id = Column(Integer, primary_key=True)
-#     username = Column(String, unique=True, nullable=False)
-#     password_hash = Column(String, nullable=False)
-#     role = Column(SqlEnum(UserRole), default=UserRole.GUEST)
-
-#     author_id = Column(Integer, ForeignKey('authors.author_id'))
-#     author = relationship("Author", back_populates="user", uselist=False, foreign_keys=[author_id])
 
 class Permissions:
     FULL_ACCESS = "Full Access"
@@ -57,16 +50,15 @@ class Author(Base):
     user_id = Column(Integer, ForeignKey('users.user_id'), unique=True)
     first_name = Column(String(100))
     last_name = Column(String(100))
-    mid_name = Column(String(100))  # Новое поле: отчество
+    mid_name = Column(String(100))  
     full_name = Column(String(150))
     full_name_eng = Column(String(150))
     email = Column(String(50))
     orcid = Column(String(20))
-    # Новые поля
     h_index = Column(String(10))
     scopus_id = Column(String(20))
-    position = Column(String(100))  # Должность
-    academic_degree = Column(String(50))  # Ученая степень
+    position = Column(String(100))  
+    academic_degree = Column(String(50))  
     
     user = relationship("User", back_populates="author", uselist=False)
     publications = relationship("Publication", secondary="publication_authors", back_populates="authors")
@@ -76,14 +68,14 @@ class Institution(Base):
     __tablename__ = 'institutions'
     institution_id = Column(Integer, primary_key=True)
     name = Column(String(255))
-    full_name = Column(Text)  # Новое поле: полное название
+    full_name = Column(Text)  
     city = Column(String(255))
     country = Column(String(255))
-    region = Column(String(100))  # Новое поле: регион
+    region = Column(String(100))  
     street = Column(String(255))
     house = Column(Integer)
-    postal_code = Column(String(20))  # Новое поле: почтовый индекс
-    website = Column(String(200))  # Новое поле: сайт
+    postal_code = Column(String(20))  
+    website = Column(String(200)) 
     
     authors = relationship("AuthorInstitution", back_populates="institution", cascade="all, delete-orphan")
 
@@ -124,7 +116,7 @@ class Keyword(Base):
     __tablename__ = 'keywords'
     keyword_id = Column(Integer, primary_key=True)
     keyword = Column(String(50), unique=True)
-    category = Column(String(50))  # Новое поле: категория
+    category = Column(String(50)) 
 
     publications = relationship("Publication", secondary="publication_keywords", back_populates="keywords")
 
